@@ -14,6 +14,7 @@ SimpleButtons buttons(arduboy);
 #include <stdint.h>
 #include "images.h"
 
+/* frame rate of the game */
 #define FPS                         20
 
 enum main_states {
@@ -23,8 +24,8 @@ enum main_states {
 	HELP,
 };
 
-/* current state of the game */
-static uint8_t state = MAIN;
+/* state of the program */
+static uint8_t main_state = MAIN;
 
 /*---------------------------------------------------------------------------
  * graphic functions
@@ -654,30 +655,32 @@ help(void)
 extern "C"
 {
 #endif
+
 void
 loop(void)
 {
 	if (!next_frame())
 		return;
 
-	switch (state) {
+	switch (main_state) {
 	case MAIN:
-		state = mainscreen();
+		main_state = mainscreen();
 		break;
 	case LOAD:
-		state = load();
+		main_state = load();
 		break;
 	case RUN:
-		state = run();
+		main_state = run();
 		break;
 	case HELP:
-		state = help();
+		main_state = help();
 		break;
 	}
 #ifndef HOST_TEST
 	arduboy.display();
 #endif
 }
+
 #ifdef __cplusplus
 }
 #endif

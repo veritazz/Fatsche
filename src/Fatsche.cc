@@ -55,9 +55,9 @@ blit_image_frame(uint8_t x, uint8_t y, const uint8_t *img, uint8_t nr, uint8_t f
 /*---------------------------------------------------------------------------
  * inputs
  *---------------------------------------------------------------------------*/
+#ifdef HOST_TEST
 static uint8_t input_current = 0;
 
-#ifdef HOST_TEST
 /* input states */
 enum KEYS {
 	KEY_UP = 1,

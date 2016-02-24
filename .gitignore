@@ -26,3 +26,11 @@
 *.exe
 *.out
 *.app
+*.elf
+
+# dependency files
+*.d
+
+# misc
+*.hex
+*.eep

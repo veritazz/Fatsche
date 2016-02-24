@@ -41,14 +41,28 @@ static uint8_t main_state = MAIN;
 static void
 blit_image(uint8_t x, uint8_t y, const uint8_t *img, uint8_t flags)
 {
-#ifdef ARDUBOY
-//	arduboy.drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint8_t color)
-#endif
+	arduboy.drawBitmap(x,
+			   y,
+			   img + 2,
+			   pgm_read_byte_near(img), /* width */
+			   pgm_read_byte_near(img + 1), /* height */
+			   WHITE);
 }
 
 static void
 blit_image_frame(uint8_t x, uint8_t y, const uint8_t *img, uint8_t nr, uint8_t flags)
 {
+	uint8_t w, h;
+
+	w = pgm_read_byte_near(img);
+	h = pgm_read_byte_near(img + 1);
+
+	arduboy.drawBitmap(x,
+			   y,
+			   img + (w * ((h + 7) / 8) * nr) + 2,
+			   w, /* width */
+			   h, /* height */
+			   WHITE);
 }
 #endif
 

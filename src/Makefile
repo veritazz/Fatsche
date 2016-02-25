@@ -11,8 +11,8 @@ BOARD_TAG    = micro
 #ISP_PROG = avrispmkii
 #ISP_PORT = usb
 #AVRDUDE_ARD_BAUDRATE = 100 -B 100
-ARDUINO_LIBS = Arduboy ArduboyExtra SPI EEPROM
-EXTRA_CXXFLAGS = -DARDUBOY
+ARDUINO_LIBS = Arduboy/src Arduboy/src/core Arduboy/src/audio ArduboyExtra SPI EEPROM
+#EXTRA_CXXFLAGS = ...
 include $(ARDMK_DIR)/Arduino.mk
 
 # !!! Important. You have to use make ispload to upload when using ISP programmer

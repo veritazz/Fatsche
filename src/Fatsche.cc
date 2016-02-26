@@ -190,9 +190,9 @@ setup(void)
 {
 #ifndef HOST_TEST
 	arduboy.setFrameRate(FPS);
-	arduboy.start();
-	/* TODO display logo */
-	arduboy.clearDisplay();
+	arduboy.begin();
+	/* TODO check */
+	arduboy.clear();
 	arduboy.display();
 #else
 #endif

@@ -371,15 +371,27 @@ static void draw_score(void)
 enum player_states {
 	PLAYER_L_MOVE,
 	PLAYER_R_MOVE,
-	PLAYER_STAYS,
-	PLAYER_FIRES,
+	PLAYER_RESTS,
+	PLAYER_THROWS,
 	PLAYER_MAX_STATES,
 };
 
-static const uint8_t player_timings[PLAYER_MAX_STATES] = {FPS / 5, FPS / 5, FPS / 5, FPS / 5};
-static const uint8_t player_frame_offsets[PLAYER_MAX_STATES] = {0, 4, 8, 12};
+/* delay per frame in each state */
+static const uint8_t player_timings[PLAYER_MAX_STATES] = {
+	FPS / 5, /* moving left */
+	FPS / 5, /* moving right */
+	FPS / 5, /* resting */
+	FPS / 5, /* throwing */
+};
+/* offsets in number of frames per state */
+static const uint8_t player_frame_offsets[PLAYER_MAX_STATES] = {
+	  0, /* moving left */
+	  4, /* moving right */
+	  8, /* resting */
+	 12, /* throwing */
+};
 
-static void update_player(int8_t dx, uint8_t fire)
+static void update_player(int8_t dx, uint8_t throws)
 {
 	uint8_t state = cs.state;
 
@@ -395,12 +407,12 @@ static void update_player(int8_t dx, uint8_t fire)
 			cs.x++;
 	}
 
-	if (fire) {
-		cs.state = PLAYER_FIRES;
+	if (throws) {
+		cs.state = PLAYER_THROWS;
 	}
 
-	if (!dx && !fire) {
-		cs.state = PLAYER_STAYS;
+	if (!dx && !throws) {
+		cs.state = PLAYER_RESTS;
 	}
 
 	if (state != cs.state)
@@ -424,9 +436,9 @@ static void draw_player(void)
 			break;
 		case PLAYER_R_MOVE:
 			break;
-		case PLAYER_STAYS:
+		case PLAYER_RESTS:
 			break;
-		case PLAYER_FIRES:
+		case PLAYER_THROWS:
 			break;
 		}
 #endif
@@ -569,9 +581,17 @@ static void draw_all_bullets(void)
 		if (bs->active == 0)
 			continue;
 		if (bs->ys == bs->ye)
-			blit_image_frame(bs->x, bs->ys, water_bomb_impact_img, bs->frame, __flag_none);
+			blit_image_frame(bs->x,
+					 bs->ys,
+					 water_bomb_impact_img,
+					 bs->frame,
+					 __flag_none);
 		else
-			blit_image_frame(bs->x, bs->ys, water_bomb_air_img, bs->frame, __flag_none);
+			blit_image_frame(bs->x,
+					 bs->ys,
+					 water_bomb_air_img,
+					 bs->frame,
+					 __flag_none);
 	}
 }
 
@@ -585,7 +605,7 @@ struct enemy_state {
 static int
 run(void)
 {
-	uint8_t i, fire = 0;
+	uint8_t i, throws = 0;
 	int8_t dx = 0;
 
 	switch (game_state) {
@@ -604,13 +624,6 @@ run(void)
 		game_state = GAME_STATE_RUN;
 		break;
 	case GAME_STATE_RUN:
-		/* update ammo */
-		update_ammo();
-		/* update bullets */
-		update_all_bullets();
-		/* update enemies */
-		/* update scene animations */
-		/* check for game over */
 		/* check user inputs */
 		if (up()) {
 			/* select weapon upwards */
@@ -633,14 +646,22 @@ run(void)
 			if (cs.x < 100)
 				cs.x++;
 		} else if (a()) {
-			/* fire bullet to the lower lane of the street */
+			/* throws bullet to the lower lane of the street */
 			new_bullet(cs.x, 0, ws.selected);
 		} else if (b()) {
-			/* fire bullet to the upper lane of the street */
+			/* throws bullet to the upper lane of the street */
 			new_bullet(cs.x, 1, ws.selected);
 		}
+
+		/* update ammo */
+		update_ammo();
+		/* update bullets */
+		update_all_bullets();
+		/* update enemies */
+		/* update scene animations */
+		/* check for game over */
 		/* update player */
-		update_player(dx, fire);
+		update_player(dx, throws);
 
 		blit_image(0, 0, game_background_img, __flag_none);
 		/* draw player */

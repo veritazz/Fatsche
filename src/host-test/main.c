@@ -26,32 +26,35 @@ static int done = 0;
 uint8_t
 get_inputs(void)
 {
-	int key = getch();
+	int key;
 	uint8_t keys = 0;
 
-	switch (key) {
-	case KEY_UP:
-		keys = 1;
-		break;
-	case KEY_DOWN:
-		keys = 2;
-		break;
-	case KEY_LEFT:
-		keys = 4;
-		break;
-	case KEY_RIGHT:
-		keys = 8;
-		break;
-	case 'a':
-		keys = 16;
-		break;
-	case 'b':
-		keys = 32;
-		break;
-	case 27:
-		done = 1;
-		break;
-	}
+	do {
+		key = getch();
+		switch (key) {
+		case KEY_UP:
+			keys |= 1;
+			break;
+		case KEY_DOWN:
+			keys |= 2;
+			break;
+		case KEY_LEFT:
+			keys |= 4;
+			break;
+		case KEY_RIGHT:
+			keys |= 8;
+			break;
+		case 'a':
+			keys |= 16;
+			break;
+		case 'b':
+			keys |= 32;
+			break;
+		case 27:
+			done = 1;
+			break;
+		}
+	} while (key != ERR);
 
 	return keys;
 }

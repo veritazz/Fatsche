@@ -15,7 +15,7 @@ SimpleButtons buttons(arduboy);
 #include "images.h"
 
 /* frame rate of the game */
-#define FPS                         20
+#define FPS                         30
 
 enum main_states {
 	MAIN = 0,

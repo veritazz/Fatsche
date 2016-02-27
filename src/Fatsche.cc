@@ -178,6 +178,13 @@ static uint8_t next_frame(void)
 #endif
 }
 
+static void finish_frame(void)
+{
+#ifndef HOST_TEST
+	arduboy.display();
+#endif
+}
+
 /*---------------------------------------------------------------------------
  * setup
  *---------------------------------------------------------------------------*/
@@ -711,9 +718,7 @@ loop(void)
 		main_state = help();
 		break;
 	}
-#ifndef HOST_TEST
-	arduboy.display();
-#endif
+	finish_frame();
 }
 
 #ifdef __cplusplus

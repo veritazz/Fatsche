@@ -391,8 +391,8 @@ enum player_states {
 static const uint8_t player_timings[PLAYER_MAX_STATES] = {
 	FPS / 5, /* moving left */
 	FPS / 5, /* moving right */
-	FPS / 5, /* resting */
-	FPS / 5, /* throwing */
+	FPS / 1, /* resting */
+	FPS / 2, /* throwing */
 };
 /* offsets in number of frames per state */
 static const uint8_t player_frame_offsets[PLAYER_MAX_STATES] = {
@@ -468,9 +468,19 @@ static void draw_player(void)
 			 __flag_none);
 }
 
+static void draw_enemies(void)
+{
+}
+
+static void draw_scene(void)
+{
+	blit_image(0, 0, game_background_img, __flag_none);
+}
+
 enum game_states {
 	GAME_STATE_INIT = 0,
 	GAME_STATE_RUN,
+	GAME_STATE_OVER,
 };
 
 // XXX
@@ -505,7 +515,7 @@ static const uint8_t atime[NR_WEAPONS] = {FPS, FPS, FPS, FPS};
 /* nr of frames weapon is effective on ground */
 static const uint8_t etime[NR_WEAPONS] = {FPS * 2, FPS * 2, FPS * 2, FPS * 2};
 /* nr of frames until next bullet movement */
-static const uint8_t mtime[NR_WEAPONS] = {FPS / 2, FPS / 2, FPS / 2, FPS / 2};
+static const uint8_t mtime[NR_WEAPONS] = {FPS / 20, FPS / 20, FPS / 20, FPS / 20};
 /* maximum number of ammo per weapon */
 static const uint8_t max_ammo[NR_WEAPONS] = {8, 4, 2, 1};
 
@@ -552,7 +562,7 @@ static void new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 	}
 }
 
-static void update_all_bullets(void)
+static void update_bullets(void)
 {
 	uint8_t b;
 	struct bullet_state *bs = &ws.bs[0];
@@ -585,7 +595,7 @@ static void update_all_bullets(void)
 	}
 }
 
-static void draw_all_bullets(void)
+static void draw_bullets(void)
 {
 	uint8_t b;
 	struct bullet_state *bs = &ws.bs[0];
@@ -616,11 +626,33 @@ struct enemy_state {
 	uint8_t type;
 };
 
+static void update_enemies(void)
+{
+	/* update and spawn enemies */
+}
+
+static void update_scene(void)
+{
+	/* update scene animations */
+}
+
+static int check_game_over(void)
+{
+	if (cs.life == 0)
+		return 1;
+	return 0;
+}
+
+static void check_collisions(void)
+{
+}
+
 static int
 run(void)
 {
 	uint8_t i, throws = 0;
 	int8_t dx = 0;
+	int rstate = RUN;
 
 	switch (game_state) {
 	case GAME_STATE_INIT:
@@ -629,6 +661,7 @@ run(void)
 		cs.x = 20;
 		cs.frame = 0;
 		cs.score = 0;
+		cs.rest_timeout = PLAYER_REST_TIMEOUT;
 		/* init weapon states */
 		memset(&ws, 0, sizeof(ws));
 		for (i = 0; i < NR_WEAPONS; i++)
@@ -636,7 +669,19 @@ run(void)
 		game_state = GAME_STATE_RUN;
 		break;
 	case GAME_STATE_RUN:
+		/* check for game over */
+		if (check_game_over()) {
+			game_state = GAME_STATE_OVER;
+			break;
+		}
+
 		/* check user inputs */
+		if (up() && a()) {
+			/* go to menu */
+			rstate = MAIN;
+			break;
+		}
+
 		if (up()) {
 			/* select weapon upwards */
 			if (ws.selected == 0)
@@ -668,25 +713,34 @@ run(void)
 		/* update ammo */
 		update_ammo();
 		/* update bullets */
-		update_all_bullets();
-		/* update enemies */
+		update_bullets();
+		/* check for collisions */
+		check_collisions();
+		/* update/spawn enemies */
+		update_enemies();
 		/* update scene animations */
-		/* check for game over */
+		update_scene();
 		/* update player */
 		update_player(dx, throws);
 
-		blit_image(0, 0, game_background_img, __flag_none);
+		/* draw scene */
+		draw_scene();
 		/* draw player */
 		draw_player();
+		/* draw enemies */
+		draw_enemies();
 		/* update animations */
-		draw_all_bullets();
+		draw_bullets();
 		/* draw new score */
 		draw_score();
 		//HACK
 		cs.score++;
 		break;
+	case GAME_STATE_OVER:
+		rstate = MAIN;
+		break;
 	}
-	return RUN;
+	return rstate;
 }
 
 static int

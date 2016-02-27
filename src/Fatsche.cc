@@ -343,9 +343,11 @@ static struct character_state {
 	uint8_t life;
 	uint8_t x;
 
+	uint16_t rest_timeout;
 	uint8_t atime;
 	uint8_t frame:2;
 	uint8_t state:2;
+	uint8_t previous_state:2;
 
 	uint32_t score;
 } cs;
@@ -383,6 +385,8 @@ enum player_states {
 	PLAYER_MAX_STATES,
 };
 
+#define PLAYER_REST_TIMEOUT                  FPS * 5
+
 /* delay per frame in each state */
 static const uint8_t player_timings[PLAYER_MAX_STATES] = {
 	FPS / 5, /* moving left */
@@ -398,32 +402,54 @@ static const uint8_t player_frame_offsets[PLAYER_MAX_STATES] = {
 	 12, /* throwing */
 };
 
+static void player_set_state(uint8_t new_state)
+{
+	if (new_state != cs.state || new_state == PLAYER_THROWS) {
+		cs.frame = 0;
+		cs.atime = player_timings[new_state];
+	}
+
+	if (cs.state != PLAYER_THROWS && cs.state != PLAYER_RESTS)
+		cs.previous_state = cs.state;
+
+	cs.state = new_state;
+	switch(cs.state) {
+	case PLAYER_L_MOVE:
+	case PLAYER_R_MOVE:
+	case PLAYER_THROWS:
+		cs.rest_timeout = PLAYER_REST_TIMEOUT;
+		break;
+	}
+}
+
 static void update_player(int8_t dx, uint8_t throws)
 {
-	uint8_t state = cs.state;
-
 	/* update position */
-	if (dx > 0) {
-		cs.state = PLAYER_L_MOVE;
+	if (dx < 0) {
+		player_set_state(PLAYER_L_MOVE);
 		if (cs.x > 20)
 			cs.x--;
 	}
-	if (dx < 0) {
-		cs.state = PLAYER_R_MOVE;
+	if (dx > 0) {
+		player_set_state(PLAYER_R_MOVE);
 		if (cs.x < 100)
 			cs.x++;
 	}
 
-	if (throws) {
-		cs.state = PLAYER_THROWS;
-	}
+	if (throws)
+		player_set_state(PLAYER_THROWS);
 
-	if (!dx && !throws) {
-		cs.state = PLAYER_RESTS;
-	}
+	if (!dx && !throws && cs.state != PLAYER_RESTS)
+		cs.rest_timeout--;
 
-	if (state != cs.state)
-		cs.atime = 0;
+	if (!cs.rest_timeout)
+		player_set_state(PLAYER_RESTS);
+
+	/* return to previous state after throwing */
+	if (!throws &&
+	    cs.state == PLAYER_THROWS && cs.atime == 0) {
+		player_set_state(cs.previous_state);
+	}
 
 	/* update frames */
 	if (cs.atime == 0) {
@@ -646,18 +672,18 @@ run(void)
 				ws.selected++;
 		} else if (left()) {
 			/* move character to the left */
-			if (cs.x > 20)
-				cs.x--;
+			dx = -1;
 		} else if (right()) {
 			/* move character to the right */
-			if (cs.x < 100)
-				cs.x++;
+			dx = 1;
 		} else if (a()) {
 			/* throws bullet to the lower lane of the street */
 			new_bullet(cs.x, 0, ws.selected);
+			throws = 1;
 		} else if (b()) {
 			/* throws bullet to the upper lane of the street */
 			new_bullet(cs.x, 1, ws.selected);
+			throws = 1;
 		}
 
 		/* update ammo */

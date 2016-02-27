@@ -461,29 +461,10 @@ static void update_player(int8_t dx, uint8_t throws)
 
 static void draw_player(void)
 {
-#if 0
-	if (cs.atime == 0) {
-#if 0
-		switch (cs.state) {
-		case PLAYER_L_MOVE:
-			break;
-		case PLAYER_R_MOVE:
-			break;
-		case PLAYER_RESTS:
-			break;
-		case PLAYER_THROWS:
-			break;
-		}
-#endif
-		cs.atime = player_timings[cs.state];
-		cs.frame++;
-	} else
-		cs.atime--;
-#endif
-
 	blit_image_frame(cs.x,
 			 0,
-			 player_all_frames_img, player_frame_offsets[cs.state] + cs.frame,
+			 player_all_frames_img,
+			 player_frame_offsets[cs.state] + cs.frame,
 			 __flag_none);
 }
 
@@ -643,8 +624,6 @@ run(void)
 
 	switch (game_state) {
 	case GAME_STATE_INIT:
-		/* draw main screen */
-	//HACK	blit_image(0, 0, game_mainscreen, __flag_none);
 		/* init character state */
 		cs.life = 255;
 		cs.x = 20;

@@ -333,23 +333,21 @@ mainscreen(void)
 static int
 load(void)
 {
-	return MAIN;
+	return PROGRAM_MAIN_MENU;
 }
 
 /*---------------------------------------------------------------------------
  * game handling
  *---------------------------------------------------------------------------*/
 static struct character_state {
-	uint8_t life;
-	uint8_t x;
-
-	uint16_t rest_timeout;
-	uint8_t atime;
-	uint8_t frame:2;
-	uint8_t state:2;
-	uint8_t previous_state:2;
-
-	uint32_t score;
+	uint8_t life; /* remaining life of player */
+	uint8_t x; /* current x position of player */
+	uint16_t rest_timeout; /* timeout in frames until player is resting */
+	uint8_t atime; /* nr of frames till next frame of sprite */
+	uint8_t frame:4; /* current frame of sprite */
+	uint8_t state:2; /* current player state */
+	uint8_t previous_state:2; /* previous player state */
+	uint32_t score; /* current score */
 } cs;
 
 static void draw_number(uint8_t x, uint8_t y, int8_t number)

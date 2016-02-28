@@ -17,15 +17,15 @@ SimpleButtons buttons(arduboy);
 /* frame rate of the game */
 #define FPS                         30
 
-enum main_states {
-	MAIN = 0,
-	LOAD,
-	RUN,
-	HELP,
+enum program_states {
+	PROGRAM_MAIN_MENU = 0,
+	PROGRAM_LOAD_GAME,
+	PROGRAM_RUN_GAME,
+	PROGRAM_SHOW_HELP,
 };
 
 /* state of the program */
-static uint8_t main_state = MAIN;
+static uint8_t main_state = PROGRAM_MAIN_MENU;
 
 /*---------------------------------------------------------------------------
  * graphic functions
@@ -220,18 +220,18 @@ static uint8_t menu_state = 0;
 
 enum menu_item {
 	MENU_ITEM_PLAY  = 0,
-	MENU_ITEM_LOAD,
-	MENU_ITEM_HELP,
+	MENU_ITEM_PROGRAM_LOAD_GAME,
+	MENU_ITEM_PROGRAM_SHOW_HELP,
 	MENU_ITEM_CONTINUE,
 	MENU_ITEM_SAVE,
 };
 
 const uint8_t menu_item_xlate[] PROGMEM = {
-	[MENU_ITEM_PLAY] = RUN,
-	[MENU_ITEM_LOAD] = LOAD,
-	[MENU_ITEM_HELP] = HELP,
-	[MENU_ITEM_CONTINUE] = RUN,
-	[MENU_ITEM_SAVE] = MAIN,
+	[MENU_ITEM_PLAY] = PROGRAM_RUN_GAME,
+	[MENU_ITEM_PROGRAM_LOAD_GAME] = PROGRAM_LOAD_GAME,
+	[MENU_ITEM_PROGRAM_SHOW_HELP] = PROGRAM_SHOW_HELP,
+	[MENU_ITEM_CONTINUE] = PROGRAM_RUN_GAME,
+	[MENU_ITEM_SAVE] = PROGRAM_MAIN_MENU,
 };
 
 #define MENU_ITEM_X               20
@@ -254,7 +254,7 @@ static int
 mainscreen(void)
 {
 	uint8_t frame = (menu_state >> 1) & 0x7;
-	uint8_t game_state = MAIN;
+	uint8_t game_state = PROGRAM_MAIN_MENU;
 	uint8_t needs_update = 1;
 	uint8_t menu_item = (menu_state >> 5) & 0x3;
 	static uint8_t next_frame = FPS; /* updates of the animation */
@@ -325,7 +325,7 @@ mainscreen(void)
 	next_frame--;
 
 	/* reset menu state if we leave the main menu */
-	if (game_state != MAIN)
+	if (game_state != PROGRAM_MAIN_MENU)
 		menu_state &= ~1;
 	return game_state;
 }
@@ -472,12 +472,15 @@ static void draw_enemies(void)
 
 static void draw_scene(void)
 {
+	/* draw main scene */
 	blit_image(0, 0, game_background_img, __flag_none);
+	/* draw ammo */
+	/* ammo * levels / max */
 }
 
 enum game_states {
 	GAME_STATE_INIT = 0,
-	GAME_STATE_RUN,
+	GAME_STATE_PROGRAM_RUN_GAME,
 	GAME_STATE_OVER,
 };
 
@@ -650,7 +653,7 @@ run(void)
 {
 	uint8_t i, throws = 0;
 	int8_t dx = 0;
-	int rstate = RUN;
+	int rstate = PROGRAM_RUN_GAME;
 
 	switch (game_state) {
 	case GAME_STATE_INIT:
@@ -664,9 +667,9 @@ run(void)
 		memset(&ws, 0, sizeof(ws));
 		for (i = 0; i < NR_WEAPONS; i++)
 			ws.ammo[i] = max_ammo[i];
-		game_state = GAME_STATE_RUN;
+		game_state = GAME_STATE_PROGRAM_RUN_GAME;
 		break;
-	case GAME_STATE_RUN:
+	case GAME_STATE_PROGRAM_RUN_GAME:
 		/* check for game over */
 		if (check_game_over()) {
 			game_state = GAME_STATE_OVER;
@@ -676,7 +679,7 @@ run(void)
 		/* check user inputs */
 		if (up() && a()) {
 			/* go to menu */
-			rstate = MAIN;
+			rstate = PROGRAM_MAIN_MENU;
 			break;
 		}
 
@@ -737,7 +740,7 @@ run(void)
 		cs.score++;
 		break;
 	case GAME_STATE_OVER:
-		rstate = MAIN;
+		rstate = PROGRAM_MAIN_MENU;
 		break;
 	}
 	return rstate;
@@ -746,7 +749,7 @@ run(void)
 static int
 help(void)
 {
-	return MAIN;
+	return PROGRAM_MAIN_MENU;
 }
 
 /*---------------------------------------------------------------------------
@@ -764,16 +767,16 @@ loop(void)
 		return;
 
 	switch (main_state) {
-	case MAIN:
+	case PROGRAM_MAIN_MENU:
 		main_state = mainscreen();
 		break;
-	case LOAD:
+	case PROGRAM_LOAD_GAME:
 		main_state = load();
 		break;
-	case RUN:
+	case PROGRAM_RUN_GAME:
 		main_state = run();
 		break;
-	case HELP:
+	case PROGRAM_SHOW_HELP:
 		main_state = help();
 		break;
 	}

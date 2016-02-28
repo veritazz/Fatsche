@@ -503,7 +503,7 @@ struct bullet_state {
 
 static struct weapon_states {
 	uint8_t selected; /* selected weapon */
-	uint8_t ammo[NR_WEAPONS]; /* ammo per weapon */
+	uint8_t ammo[NR_WEAPONS]; /* available ammo per weapon */
 	uint8_t rtime[NR_WEAPONS]; /* remaining time till reload */
 	struct bullet_state bs[NR_BULLETS];
 } ws;

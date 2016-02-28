@@ -700,11 +700,13 @@ run(void)
 		} else if (right()) {
 			/* move character to the right */
 			dx = 1;
-		} else if (a()) {
+		}
+		if (a()) {
 			/* throws bullet to the lower lane of the street */
 			new_bullet(cs.x, 0, ws.selected);
 			throws = 1;
-		} else if (b()) {
+		}
+		if (b()) {
 			/* throws bullet to the upper lane of the street */
 			new_bullet(cs.x, 1, ws.selected);
 			throws = 1;

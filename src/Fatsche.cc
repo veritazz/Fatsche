@@ -535,6 +535,7 @@ static void update_ammo(void)
 	}
 }
 
+/* TODO: fix this, ammo might be available but no free bullet */
 static void new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 {
 	uint8_t b;
@@ -542,6 +543,8 @@ static void new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 
 	if (ws.ammo[weapon] == 0)
 		return;
+
+	ws.ammo[weapon]--;
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {

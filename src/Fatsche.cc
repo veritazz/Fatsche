@@ -356,31 +356,6 @@ static struct character_state {
 	uint32_t score; /* current score */
 } cs;
 
-static void draw_number(uint8_t x, uint8_t y, int8_t number)
-{
-	if (number >= 0 && number <= 9)
-		blit_image_frame(x, y, numbers_img, number, __flag_none);
-}
-
-static void draw_score(void)
-{
-	uint32_t score = cs.score;
-
-	draw_number(90, 57, score / 1000000);
-	score %= 1000000;
-	draw_number(95, 57, score / 100000);
-	score %= 100000;
-	draw_number(100, 57, score / 10000);
-	score %= 10000;
-	draw_number(105, 57, score / 1000);
-	score %= 1000;
-	draw_number(110, 57, score / 100);
-	score %= 100;
-	draw_number(115, 57, score / 10);
-	score %= 10;
-	draw_number(120, 57, score);
-}
-
 enum player_states {
 	PLAYER_L_MOVE,
 	PLAYER_R_MOVE,
@@ -461,27 +436,6 @@ static void update_player(int8_t dx, uint8_t throws)
 		cs.frame++;
 	} else
 		cs.atime--;
-}
-
-static void draw_player(void)
-{
-	blit_image_frame(cs.x,
-			 0,
-			 player_all_frames_img,
-			 player_frame_offsets[cs.state] + cs.frame,
-			 __flag_none);
-}
-
-static void draw_enemies(void)
-{
-}
-
-static void draw_scene(void)
-{
-	/* draw main scene */
-	blit_image(0, 0, game_background_img, __flag_none);
-	/* draw ammo */
-	/* ammo * levels / max */
 }
 
 enum game_states {
@@ -605,30 +559,6 @@ static void update_bullets(void)
 	}
 }
 
-static void draw_bullets(void)
-{
-	uint8_t b;
-	struct bullet_state *bs = &ws.bs[0];
-
-	/* create a new bullet, do nothing if not possible */
-	for (b = 0; b < NR_BULLETS; b++, bs++) {
-		if (bs->active == 0)
-			continue;
-		if (bs->ys == bs->ye)
-			blit_image_frame(bs->x,
-					 bs->ys,
-					 water_bomb_impact_img,
-					 bs->frame,
-					 __flag_none);
-		else
-			blit_image_frame(bs->x,
-					 bs->ys,
-					 water_bomb_air_img,
-					 bs->frame,
-					 __flag_none);
-	}
-}
-
 struct enemy_state {
 	uint8_t life;
 	uint8_t xy;
@@ -655,6 +585,89 @@ static int check_game_over(void)
 
 static void check_collisions(void)
 {
+}
+
+/*---------------------------------------------------------------------------
+ * rendering functions
+ *---------------------------------------------------------------------------*/
+static void draw_player(void)
+{
+	blit_image_frame(cs.x,
+			 0,
+			 player_all_frames_img,
+			 player_frame_offsets[cs.state] + cs.frame,
+			 __flag_none);
+}
+
+static void draw_enemies(void)
+{
+}
+
+static void draw_scene(void)
+{
+	/* draw main scene */
+	blit_image(0, 0, game_background_img, __flag_none);
+	/* draw current ammo level */
+	/* ammo * levels / max */
+	for (uint8_t i = 0; i < NR_WEAPONS; i++) {
+		uint8_t level = ws.ammo[i] * 4 / max_ammo[i];
+		printf("level%d: %d\n", i, level);
+		while (level--) {
+			draw_filled_rect(9,
+					 16 + (16 * i) - level * 4,
+					 2,
+					 3);
+		}
+	}
+}
+
+static void draw_bullets(void)
+{
+	uint8_t b;
+	struct bullet_state *bs = &ws.bs[0];
+
+	/* create a new bullet, do nothing if not possible */
+	for (b = 0; b < NR_BULLETS; b++, bs++) {
+		if (bs->active == 0)
+			continue;
+		if (bs->ys == bs->ye)
+			blit_image_frame(bs->x,
+					 bs->ys,
+					 water_bomb_impact_img,
+					 bs->frame,
+					 __flag_none);
+		else
+			blit_image_frame(bs->x,
+					 bs->ys,
+					 water_bomb_air_img,
+					 bs->frame,
+					 __flag_none);
+	}
+}
+
+static void draw_number(uint8_t x, uint8_t y, int8_t number)
+{
+	if (number >= 0 && number <= 9)
+		blit_image_frame(x, y, numbers_img, number, __flag_none);
+}
+
+static void draw_score(void)
+{
+	uint32_t score = cs.score;
+
+	draw_number(90, 57, score / 1000000);
+	score %= 1000000;
+	draw_number(95, 57, score / 100000);
+	score %= 100000;
+	draw_number(100, 57, score / 10000);
+	score %= 10000;
+	draw_number(105, 57, score / 1000);
+	score %= 1000;
+	draw_number(110, 57, score / 100);
+	score %= 100;
+	draw_number(115, 57, score / 10);
+	score %= 10;
+	draw_number(120, 57, score);
 }
 
 static int

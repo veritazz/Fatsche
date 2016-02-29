@@ -102,6 +102,22 @@ blit_image_frame(uint8_t px, uint8_t py, const uint8_t *img, uint8_t nr, uint8_t
 	}
 }
 
+void
+draw_hline(uint8_t x, uint8_t y, uint8_t w)
+{
+	uint8_t i;
+
+	for (i = x; i < x + w; i++)
+		fb[y * WIDTH + i] = '+';
+}
+
+void
+draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+{
+	while (h--)
+		draw_hline(x, y + h, w);
+}
+
 extern void setup(void);
 extern void loop(void);
 

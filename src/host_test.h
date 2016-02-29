@@ -31,7 +31,7 @@ extern void blit_image_frame(uint8_t x,
 			     const uint8_t *img,
 			     uint8_t nr,
 			     uint8_t flags);
-
+extern void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 #ifdef __cplusplus
 }
 #endif

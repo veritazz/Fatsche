@@ -64,6 +64,12 @@ blit_image_frame(uint8_t x, uint8_t y, const uint8_t *img, uint8_t nr, uint8_t f
 			   h, /* height */
 			   WHITE);
 }
+
+static void
+draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+{
+	arduboy.fillRect(x, y, w, h, WHITE);
+}
 #endif
 
 /*---------------------------------------------------------------------------

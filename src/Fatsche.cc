@@ -356,7 +356,7 @@ static struct character_state {
 	uint8_t x; /* current x position of player */
 	uint16_t rest_timeout; /* timeout in frames until player is resting */
 	uint8_t atime; /* nr of frames till next frame of sprite */
-	uint8_t frame:4; /* current frame of sprite */
+	uint8_t frame:2; /* current frame of sprite */
 	uint8_t state:2; /* current player state */
 	uint8_t previous_state:2; /* previous player state */
 	uint32_t score; /* current score */

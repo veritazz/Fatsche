@@ -453,8 +453,13 @@ enum game_states {
 // XXX
 static enum game_states game_state = GAME_STATE_INIT;
 
-#define NR_BULLETS		10
 #define NR_WEAPONS		4
+#define MAX_AMMO_W1		16
+#define MAX_AMMO_W2		12
+#define MAX_AMMO_W3		8
+#define MAX_AMMO_W4		4
+#define NR_BULLETS		\
+	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
 
 struct bullet_state {
 	uint8_t x; /* x position of bullet */
@@ -471,12 +476,9 @@ struct bullet_state {
 static struct weapon_states {
 	uint8_t selected; /* selected weapon */
 	uint8_t ammo[NR_WEAPONS]; /* available ammo per weapon */
-	uint8_t rtime[NR_WEAPONS]; /* remaining time till reload */
 	struct bullet_state bs[NR_BULLETS];
 } ws;
 
-/* nr of frames until ammo reloads on item */
-static const uint8_t reload_time[NR_WEAPONS] = {FPS, 2 * FPS, 3 * FPS, 4 * FPS};
 /* nr of frames until next bullet animation */
 static const uint8_t atime[NR_WEAPONS] = {FPS, FPS, FPS, FPS};
 /* nr of frames weapon is effective on ground */
@@ -484,52 +486,42 @@ static const uint8_t etime[NR_WEAPONS] = {FPS * 2, FPS * 2, FPS * 2, FPS * 2};
 /* nr of frames until next bullet movement */
 static const uint8_t mtime[NR_WEAPONS] = {FPS / 20, FPS / 20, FPS / 20, FPS / 20};
 /* maximum number of ammo per weapon */
-static const uint8_t max_ammo[NR_WEAPONS] = {8, 4, 2, 1};
+static const uint8_t max_ammo[NR_WEAPONS] = {
+	MAX_AMMO_W1,
+	MAX_AMMO_W2,
+	MAX_AMMO_W3,
+	MAX_AMMO_W4,
+};
 
-static void update_ammo(void)
-{
-	uint8_t w;
-
-	for (w = 0; w < NR_WEAPONS; w++) {
-		if (ws.ammo[w] == max_ammo[w])
-			continue;
-		if (ws.rtime[w] == 0) {
-			ws.ammo[w]++;
-			ws.rtime[w] = reload_time[w];
-		} else
-			ws.rtime[w]--;
-	}
-}
-
-/* TODO: fix this, ammo might be available but no free bullet */
-static void new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
+static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 {
 	uint8_t b;
 	struct bullet_state *bs = &ws.bs[0];
 
 	if (ws.ammo[weapon] == 0)
-		return;
-
-	ws.ammo[weapon]--;
+		return 0;
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
-		if (bs->active == 0) {
-			bs->active = 1;
-			bs->weapon = weapon;
-			bs->x = x;
-			bs->ys = 5;
-			if (lane)
-				bs->ye = 42;
-			else
-				bs->ye = 56;
-			bs->atime = atime[weapon];
-			bs->etime = etime[weapon];
-			bs->mtime = mtime[weapon];
-			bs->frame = 0;
-			break;
-		}
+		if (bs->active == 1)
+			continue;
+
+		bs->active = 1;
+		bs->weapon = weapon;
+		bs->x = x;
+		bs->ys = 5;
+		if (lane)
+			bs->ye = 42;
+		else
+			bs->ye = 56;
+		bs->atime = atime[weapon];
+		bs->etime = etime[weapon];
+		bs->mtime = mtime[weapon];
+		bs->frame = 0;
+		ws.ammo[weapon]--;
+		break;
 	}
+	return 1;
 }
 
 static void update_bullets(void)
@@ -539,29 +531,31 @@ static void update_bullets(void)
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
-		if (bs->active == 1) {
-			if (bs->ys == bs->ye) {
-				if (bs->etime == 0)
-					bs->active = 0;
-				else
-					bs->etime--;
-			} else {
-				/* next movement */
-				if (bs->mtime == 0) {
-					bs->mtime = mtime[bs->weapon];
-					bs->ys++;
-					if (bs->ys == bs->ye)
-						bs->frame = 0;
-				} else
-					bs->mtime--;
-			}
-			/* next animation */
-			if (bs->atime == 0) {
-				bs->atime = atime[bs->weapon];
-				bs->frame++;
+		if (bs->active == 0)
+			continue;
+
+		if (bs->ys == bs->ye) {
+			if (bs->etime == 0) {
+				bs->active = 0;
+				ws.ammo[bs->weapon]++;
 			} else
-				bs->atime--;
+				bs->etime--;
+		} else {
+			/* next movement */
+			if (bs->mtime == 0) {
+				bs->mtime = mtime[bs->weapon];
+				bs->ys++;
+				if (bs->ys == bs->ye)
+					bs->frame = 0;
+			} else
+				bs->mtime--;
 		}
+		/* next animation */
+		if (bs->atime == 0) {
+			bs->atime = atime[bs->weapon];
+			bs->frame++;
+		} else
+			bs->atime--;
 	}
 }
 
@@ -613,16 +607,18 @@ static void draw_scene(void)
 {
 	/* draw main scene */
 	blit_image(0, 0, game_background_img, __flag_none);
+
+	/* draw selected weapon */
+	draw_rect(0, 16 * ws.selected, 14, 16);
+
 	/* draw current ammo level */
-	/* ammo * levels / max */
 	for (uint8_t i = 0; i < NR_WEAPONS; i++) {
 		uint8_t level = ws.ammo[i] * 4 / max_ammo[i];
-		printf("level%d: %d\n", i, level);
 		while (level--) {
-			draw_filled_rect(9,
-					 16 + (16 * i) - level * 4,
+			draw_filled_rect(10,
+					 16 + (16 * i) - (level + 1) * 3,
 					 2,
-					 3);
+					 2);
 		}
 	}
 }
@@ -732,17 +728,13 @@ run(void)
 		}
 		if (a()) {
 			/* throws bullet to the lower lane of the street */
-			new_bullet(cs.x, 0, ws.selected);
-			throws = 1;
+			throws = new_bullet(cs.x, 0, ws.selected);
 		}
 		if (b()) {
 			/* throws bullet to the upper lane of the street */
-			new_bullet(cs.x, 1, ws.selected);
-			throws = 1;
+			throws = new_bullet(cs.x, 1, ws.selected);
 		}
 
-		/* update ammo */
-		update_ammo();
 		/* update bullets */
 		update_bullets();
 		/* check for collisions */

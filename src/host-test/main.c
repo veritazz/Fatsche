@@ -112,6 +112,24 @@ draw_hline(uint8_t x, uint8_t y, uint8_t w)
 }
 
 void
+draw_vline(uint8_t x, uint8_t y, uint8_t h)
+{
+	uint8_t i;
+
+	for (i = y; i < y + h; i++)
+		fb[i * WIDTH + x] = '+';
+}
+
+void
+draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+{
+	draw_hline(x, y, w);
+	draw_hline(x, y + h - 1, w);
+	draw_vline(x, y, h);
+	draw_vline(x + w - 1, y, h);
+}
+
+void
 draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
 	while (h--)

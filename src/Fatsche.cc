@@ -79,6 +79,63 @@ draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 #endif
 
 /*---------------------------------------------------------------------------
+ * timers
+ *---------------------------------------------------------------------------*/
+enum timers {
+	TIMER_PLAYER_RESTS,
+	TIMER_MAX,
+};
+
+typedef void (*timeout_fn)(void);
+
+struct timer {
+	uint16_t active:1;
+	uint16_t timeout:15;
+	timeout_fn fn;
+};
+
+static struct timer timers[TIMER_MAX];
+
+static void init_timers(void)
+{
+	memset(timers, 0, sizeof(timers));
+}
+
+static void run_timers(void)
+{
+	for (uint8_t t = 0; t < TIMER_MAX; t++) {
+		if (!timers[t].active)
+			continue;
+		if (timers[t].timeout == 0) {
+			timers[t].active = 0;
+			if (timers[t].fn)
+				timers[t].fn();
+		}
+		timers[t].timeout--;
+	}
+}
+
+static void setup_timer(uint8_t id, uint16_t timeout, timeout_fn fn)
+{
+	timers[id].timeout = timeout;
+	timers[id].fn = fn;
+}
+
+static void restart_timer(uint8_t id, uint16_t timeout)
+{
+	timers[id].timeout = timeout;
+}
+
+static void start_timer(uint8_t id)
+{
+	timers[id].active = 1;
+}
+
+static void stop_timer(uint8_t id)
+{
+	timers[id].active = 0;
+}
+/*---------------------------------------------------------------------------
  * inputs
  *---------------------------------------------------------------------------*/
 #ifdef HOST_TEST
@@ -166,6 +223,7 @@ static uint8_t next_frame(void)
 		current_time = ntime + (1000 / FPS);
 		new_frame = 1;
 		update_inputs();
+		run_timers();
 	}
 
 	{
@@ -184,6 +242,7 @@ static uint8_t next_frame(void)
 #else
 	if (arduboy.nextFrame()) {
 		buttons.poll();
+		run_timers();
 		return 1;
 	}
 	return 0;
@@ -213,6 +272,7 @@ setup(void)
 	/* TODO check */
 	arduboy.clear();
 	arduboy.display();
+	init_timers();
 #else
 #endif
 }
@@ -354,7 +414,6 @@ load(void)
 static struct character_state {
 	uint8_t life; /* remaining life of player */
 	uint8_t x; /* current x position of player */
-	uint16_t rest_timeout; /* timeout in frames until player is resting */
 	uint8_t atime; /* nr of frames till next frame of sprite */
 	uint8_t frame:2; /* current frame of sprite */
 	uint8_t state:2; /* current player state */
@@ -402,9 +461,13 @@ static void player_set_state(uint8_t new_state)
 	case PLAYER_L_MOVE:
 	case PLAYER_R_MOVE:
 	case PLAYER_THROWS:
-		cs.rest_timeout = PLAYER_REST_TIMEOUT;
+		restart_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 		break;
 	}
+}
+
+static void player_is_resting(void) {
+	player_set_state(PLAYER_RESTS);
 }
 
 static void update_player(int8_t dx, uint8_t throws)
@@ -423,12 +486,6 @@ static void update_player(int8_t dx, uint8_t throws)
 
 	if (throws)
 		player_set_state(PLAYER_THROWS);
-
-	if (!dx && !throws && cs.state != PLAYER_RESTS)
-		cs.rest_timeout--;
-
-	if (!cs.rest_timeout)
-		player_set_state(PLAYER_RESTS);
 
 	/* return to previous state after throwing */
 	if (!throws &&
@@ -681,12 +738,17 @@ run(void)
 
 	switch (game_state) {
 	case GAME_STATE_INIT:
+		init_timers();
 		/* init character state */
 		cs.life = 255;
 		cs.x = 20;
 		cs.frame = 0;
 		cs.score = 0;
-		cs.rest_timeout = PLAYER_REST_TIMEOUT;
+		/* setup timer for players resting animation */
+		setup_timer(TIMER_PLAYER_RESTS,
+			    PLAYER_REST_TIMEOUT,
+			    player_is_resting);
+		start_timer(TIMER_PLAYER_RESTS);
 		/* init weapon states */
 		memset(&ws, 0, sizeof(ws));
 		for (i = 0; i < NR_WEAPONS; i++)
@@ -696,6 +758,7 @@ run(void)
 	case GAME_STATE_PROGRAM_RUN_GAME:
 		/* check for game over */
 		if (check_game_over()) {
+			init_timers();
 			game_state = GAME_STATE_OVER;
 			break;
 		}
@@ -703,6 +766,7 @@ run(void)
 		/* check user inputs */
 		if (up() && a()) {
 			/* go to menu */
+			init_timers();
 			rstate = PROGRAM_MAIN_MENU;
 			break;
 		}

@@ -115,19 +115,14 @@ static void run_timers(void)
 	}
 }
 
-static void setup_timer(uint8_t id, uint16_t timeout, timeout_fn fn)
+static void setup_timer(uint8_t id, timeout_fn fn)
 {
-	timers[id].timeout = timeout;
 	timers[id].fn = fn;
 }
 
-static void restart_timer(uint8_t id, uint16_t timeout)
+static void start_timer(uint8_t id, uint16_t timeout)
 {
 	timers[id].timeout = timeout;
-}
-
-static void start_timer(uint8_t id)
-{
 	timers[id].active = 1;
 }
 
@@ -453,6 +448,9 @@ static void player_set_state(uint8_t new_state)
 		cs.atime = player_timings[new_state];
 	}
 
+	if (new_state != cs.state && cs.state == PLAYER_RESTS)
+		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
+
 	if (cs.state != PLAYER_THROWS && cs.state != PLAYER_RESTS)
 		cs.previous_state = cs.state;
 
@@ -461,7 +459,6 @@ static void player_set_state(uint8_t new_state)
 	case PLAYER_L_MOVE:
 	case PLAYER_R_MOVE:
 	case PLAYER_THROWS:
-		restart_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 		break;
 	}
 }
@@ -746,9 +743,8 @@ run(void)
 		cs.score = 0;
 		/* setup timer for players resting animation */
 		setup_timer(TIMER_PLAYER_RESTS,
-			    PLAYER_REST_TIMEOUT,
 			    player_is_resting);
-		start_timer(TIMER_PLAYER_RESTS);
+		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 		/* init weapon states */
 		memset(&ws, 0, sizeof(ws));
 		for (i = 0; i < NR_WEAPONS; i++)

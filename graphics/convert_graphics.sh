@@ -7,4 +7,5 @@
 			-v 4 -h 1 -f water_bomb_impact.png \
 			-v 4 -h 1 -f player.png \
 			-v 16 -h 1 -f player_all_frames.png \
-			-v 16 -h 1 -f enemy1_all_frames.png
+			-v 16 -h 1 -f enemy1_all_frames.png \
+			-v 10 -h 1 -f numbers_3x5.png

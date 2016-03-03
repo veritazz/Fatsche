@@ -471,7 +471,7 @@ static void update_player(int8_t dx, uint8_t throws)
 	}
 	if (dx > 0) {
 		player_set_state(PLAYER_R_MOVE);
-		if (cs.x < 100)
+		if (cs.x < 116)
 			cs.x++;
 	}
 
@@ -657,16 +657,16 @@ static void draw_scene(void)
 	blit_image(0, 0, game_background_img, __flag_none);
 
 	/* draw selected weapon */
-	draw_rect(0, 16 * ws.selected, 14, 16);
+	draw_rect(0, 14 * ws.selected, 14, 14);
 
 	/* draw current ammo level */
 	for (uint8_t i = 0; i < NR_WEAPONS; i++) {
 		uint8_t level = ws.ammo[i] * 4 / max_ammo[i];
 		while (level--) {
 			draw_filled_rect(10,
-					 16 + (16 * i) - (level + 1) * 3,
+					 12 + (14 * i) - (level + 1) * 2,
 					 2,
-					 2);
+					 1);
 		}
 	}
 }
@@ -698,26 +698,26 @@ static void draw_bullets(void)
 static void draw_number(uint8_t x, uint8_t y, int8_t number)
 {
 	if (number >= 0 && number <= 9)
-		blit_image_frame(x, y, numbers_img, number, __flag_none);
+		blit_image_frame(x, y, numbers_3x5_img, number, __flag_none);
 }
 
 static void draw_score(void)
 {
 	uint32_t score = cs.score;
 
-	draw_number(90, 57, score / 1000000);
+	draw_number(100, 59, score / 1000000);
 	score %= 1000000;
-	draw_number(95, 57, score / 100000);
+	draw_number(104, 59, score / 100000);
 	score %= 100000;
-	draw_number(100, 57, score / 10000);
+	draw_number(108, 59, score / 10000);
 	score %= 10000;
-	draw_number(105, 57, score / 1000);
+	draw_number(112, 59, score / 1000);
 	score %= 1000;
-	draw_number(110, 57, score / 100);
+	draw_number(116, 59, score / 100);
 	score %= 100;
-	draw_number(115, 57, score / 10);
+	draw_number(120, 59, score / 10);
 	score %= 10;
-	draw_number(120, 57, score);
+	draw_number(124, 59, score);
 }
 
 static int

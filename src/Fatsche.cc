@@ -455,12 +455,6 @@ static void player_set_state(uint8_t new_state)
 		cs.previous_state = cs.state;
 
 	cs.state = new_state;
-	switch(cs.state) {
-	case PLAYER_L_MOVE:
-	case PLAYER_R_MOVE:
-	case PLAYER_THROWS:
-		break;
-	}
 }
 
 static void player_is_resting(void) {

@@ -39,7 +39,7 @@ static uint8_t main_state = PROGRAM_MAIN_MENU;
 
 #ifndef HOST_TEST
 static void
-blit_image(uint8_t x, uint8_t y, const uint8_t *img, uint8_t flags)
+blit_image(int16_t x, int16_t y, const uint8_t *img, uint8_t flags)
 {
 	arduboy.drawBitmap(x,
 			   y,
@@ -50,7 +50,7 @@ blit_image(uint8_t x, uint8_t y, const uint8_t *img, uint8_t flags)
 }
 
 static void
-blit_image_frame(uint8_t x, uint8_t y, const uint8_t *img, uint8_t nr, uint8_t flags)
+blit_image_frame(int16_t x, int16_t y, const uint8_t *img, uint8_t nr, uint8_t flags)
 {
 	uint8_t w, h;
 

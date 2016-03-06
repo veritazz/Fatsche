@@ -60,9 +60,9 @@ get_inputs(void)
 }
 
 void
-blit_image(uint8_t px, uint8_t py, const uint8_t *img, uint8_t flags)
+blit_image(int16_t px, int16_t py, const uint8_t *img, uint8_t flags)
 {
-	int x, y;
+	int16_t x, y;
 	uint8_t w, h;
 	uint16_t i = 2;
 	uint16_t bit = 0;
@@ -81,10 +81,10 @@ blit_image(uint8_t px, uint8_t py, const uint8_t *img, uint8_t flags)
 }
 
 void
-blit_image_frame(uint8_t px, uint8_t py, const uint8_t *img, uint8_t nr, uint8_t flags)
+blit_image_frame(int16_t px, int16_t py, const uint8_t *img, uint8_t nr, uint8_t flags)
 {
-	int x, y;
-	uint8_t w, h;
+	int16_t x, y;
+	uint8_t w, h, ws, hs;
 	uint16_t i = 2;
 	uint16_t bit = 0;
 	uint16_t byte = 2;
@@ -93,10 +93,17 @@ blit_image_frame(uint8_t px, uint8_t py, const uint8_t *img, uint8_t nr, uint8_t
 	w = img[0];
 	h = img[1];
 
+	ws = WIDTH - px;
+	hs = HEIGHT - py;
+	if (ws > w)
+		ws = w;
+	if (hs > h)
+		hs = h;
+
 	p = &img[(w * ((h + 7) / 8)) * nr];
 
-	for (y = py; y < (py + h); y++) {
-		for (x = px; x < (px + w); x++) {
+	for (y = py; y < (py + hs); y++) {
+		for (x = px; x < (px + ws); x++) {
 			fb[y * WIDTH + x] = (p[(y - py) / 8 * w + (x - px) + 2] & (0x80 >> ((y - py) % 8))? '+': ' ');
 		}
 	}

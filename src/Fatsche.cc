@@ -83,6 +83,7 @@ draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
  *---------------------------------------------------------------------------*/
 enum timers {
 	TIMER_PLAYER_RESTS,
+	TIMER_ENEMY_SPAWN,
 	TIMER_MAX,
 };
 
@@ -620,16 +621,142 @@ static void update_bullets(void)
 	}
 }
 
-struct enemy_state {
-	uint8_t life;
-	uint8_t xy;
-	uint8_t frame;
-	uint8_t type;
+static uint8_t get_bullet_damage(uint8_t x, uint8_t y)
+{
+	uint8_t b, damage = 0;
+	struct bullet *bs = &ws.bs[0];
+
+	for (b = 0; b < NR_BULLETS; b++, bs++) {
+		if (bs->state != BULLET_ACTIVE)
+			continue;
+		/* check if it is a hit */
+		/* if hit change to state 2 */
+		/* add damage */
+	}
+
+	return damage;
+}
+
+enum enemy_types {
+	ENEMY_RAIDER,
+	ENEMY_MAX,
 };
+
+enum enemy_state {
+	ENEMY_APPROACH_DOOR,
+	ENEMY_WALKING_LEFT,
+	ENEMY_WALKING_RIGHT,
+	ENEMY_EFFECT,
+	ENEMY_MOVE_TO_UPPER_LANE,
+	ENEMY_MOVE_TO_LOWER_LANE,
+	ENEMY_ATTACKING,
+	ENEMY_DYING,
+};
+
+static const uint8_t enemy_damage[] = {
+	0, 1, 2, 3, 4, 5, 6, 7,
+};
+
+static const int8_t enemy_life[ENEMY_MAX] = {
+	16,
+};
+
+struct enemy {
+	int8_t life;
+	uint8_t x;
+	uint8_t y;
+	uint8_t type;
+	uint8_t atime; /* nr of frames it take for the next animation frame */
+	uint8_t mtime; /* nr of frames it takes to move */
+	uint8_t damage:3;
+	uint8_t frame:2;
+	uint8_t lane:1;
+	uint8_t active:1;
+	uint8_t state;
+	uint8_t previous_state;
+};
+
+#define MAX_ENEMIES			1
+#define ENEMIES_SPAWN_RATE		FPS * 3 /* every 3 seconds */
+
+static struct enemy enemies[MAX_ENEMIES];
+
+static void spawn_new_enemies(void)
+{
+	printf("\n\r\n\r-------- jo\n\r");
+	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
+	uint8_t i;
+	struct enemy *e = &enemies[0];
+
+	/* update and spawn enemies */
+	for (i = 0; i < MAX_ENEMIES; i++, e++) {
+		if (e->active)
+			continue;
+		e->active = 1;
+		e->type = ENEMY_RAIDER;
+		e->lane = 1;
+		e->y = 40;
+		e->x = 127;
+		e->frame = 0;
+		e->state = ENEMY_WALKING_LEFT;
+		e->mtime = FPS / 2;
+		e->atime = FPS / 4;
+		e->life = enemy_life[e->type];
+		e->damage = enemy_damage[e->type];
+		break;
+	}
+}
 
 static void update_enemies(void)
 {
+	uint8_t damage;
+	uint8_t i;
+	struct enemy *e = &enemies[0];
+
 	/* update and spawn enemies */
+	for (i = 0; i < MAX_ENEMIES; i++, e++) {
+		if (!e->active)
+			continue;
+		/* check if hit by bullet */
+		damage = get_bullet_damage(e->x, e->y);
+		if (damage) {
+			e->previous_state = e->state;
+			e->state = ENEMY_EFFECT;
+			e->life -= damage; /* bullet damage */
+			if (e->life <= 0)
+				e->state = ENEMY_DYING;
+		}
+		switch (e->state) {
+		case ENEMY_WALKING_LEFT:
+			/* next movement */
+			if (e->mtime == 0) {
+				e->mtime = FPS / 2;
+				e->x--;
+			} else
+				e->mtime--;
+			break;
+		case ENEMY_APPROACH_DOOR:
+		case ENEMY_WALKING_RIGHT:
+			break;
+		case ENEMY_EFFECT:
+			/* invert current frame a few times */
+			e->state = e->previous_state;
+			break;
+		case ENEMY_MOVE_TO_UPPER_LANE:
+		case ENEMY_MOVE_TO_LOWER_LANE:
+		case ENEMY_ATTACKING:
+			break;
+		case ENEMY_DYING:
+			e->active = 0;
+			break;
+		}
+		/* next animation */
+		if (e->atime == 0) {
+			e->atime = FPS / 4;
+			e->frame++;
+		} else
+			e->atime--;
+	}
 }
 
 static void update_scene(void)
@@ -658,6 +785,18 @@ static void draw_player(void)
 
 static void draw_enemies(void)
 {
+	uint8_t i;
+	struct enemy *e = &enemies[0];
+
+	for (i = 0; i < MAX_ENEMIES; i++, e++) {
+		if (!e->active)
+			continue;
+		blit_image_frame(e->x,
+				 e->y,
+				 enemy1_all_frames_img,
+				 e->frame,
+				 __flag_none);
+	}
 }
 
 static void draw_scene(void)
@@ -758,6 +897,9 @@ run(void)
 		memset(&ws, 0, sizeof(ws));
 		for (i = 0; i < NR_WEAPONS; i++)
 			ws.ammo[i] = max_ammo[i];
+		/* setup timer for enemy spawning */
+		setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
+		start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
 		game_state = GAME_STATE_PROGRAM_RUN_GAME;
 		break;
 	case GAME_STATE_PROGRAM_RUN_GAME:

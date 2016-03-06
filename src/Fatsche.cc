@@ -450,7 +450,7 @@ static void player_set_state(uint8_t new_state)
 		cs.atime = player_timings[new_state];
 	}
 
-	if (new_state != cs.state && cs.state == PLAYER_RESTS)
+	if (new_state != PLAYER_RESTS)
 		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 
 	if (cs.state != PLAYER_THROWS && cs.state != PLAYER_RESTS)
@@ -890,8 +890,7 @@ run(void)
 		cs.frame = 0;
 		cs.score = 0;
 		/* setup timer for players resting animation */
-		setup_timer(TIMER_PLAYER_RESTS,
-			    player_is_resting);
+		setup_timer(TIMER_PLAYER_RESTS, player_is_resting);
 		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 		/* init weapon states */
 		memset(&ws, 0, sizeof(ws));

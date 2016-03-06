@@ -678,6 +678,12 @@ static void draw_scene(void)
 					 1);
 		}
 	}
+
+	/* draw current life */
+
+	/* draw weather animation */
+
+	/* draw lamp animation */
 }
 
 static void draw_bullets(void)

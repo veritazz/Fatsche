@@ -262,6 +262,7 @@ void
 setup(void)
 {
 #ifndef HOST_TEST
+	arduboy.initRandomSeed();
 	arduboy.setFrameRate(FPS);
 	arduboy.begin();
 	/* TODO check */

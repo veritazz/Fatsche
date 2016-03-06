@@ -632,10 +632,6 @@ static int check_game_over(void)
 	return 0;
 }
 
-static void check_collisions(void)
-{
-}
-
 /*---------------------------------------------------------------------------
  * rendering functions
  *---------------------------------------------------------------------------*/
@@ -792,8 +788,6 @@ run(void)
 
 		/* update bullets */
 		update_bullets();
-		/* check for collisions */
-		check_collisions();
 		/* update/spawn enemies */
 		update_enemies();
 		/* update scene animations */

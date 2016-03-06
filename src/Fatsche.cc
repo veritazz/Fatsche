@@ -694,7 +694,6 @@ static struct enemy enemies[MAX_ENEMIES];
 
 static void spawn_new_enemies(void)
 {
-	printf("\n\r\n\r-------- jo\n\r");
 	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
 	uint8_t i;
 	struct enemy *e = &enemies[0];

@@ -592,7 +592,9 @@ static void update_bullets(void)
 		if (bs->state == BULLET_INACTIVE)
 			continue;
 		if (bs->state == BULLET_SPLASH) {
-			/* simple splash animation */
+			/* TODO simple splash animation */
+			bs->state = BULLET_INACTIVE;
+			ws.ammo[bs->weapon]++;
 			continue;
 		}
 

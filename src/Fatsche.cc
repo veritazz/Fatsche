@@ -510,11 +510,17 @@ static enum game_states game_state = GAME_STATE_INIT;
 #define NR_BULLETS		\
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
 
-struct bullet_state {
+enum bullet_state {
+	BULLET_INACTIVE,
+	BULLET_ACTIVE,
+	BULLET_SPLASH,
+};
+
+struct bullet {
 	uint8_t x; /* x position of bullet */
 	uint8_t ys; /* y start position of the bullet */
 	uint8_t ye; /* y end position of the bullet */
-	uint8_t active:1;
+	uint8_t state:2;
 	uint8_t weapon:2;
 	uint8_t frame:2;
 	uint8_t atime; /* nr of frames it take for the next animation frame */
@@ -525,9 +531,11 @@ struct bullet_state {
 static struct weapon_states {
 	uint8_t selected; /* selected weapon */
 	uint8_t ammo[NR_WEAPONS]; /* available ammo per weapon */
-	struct bullet_state bs[NR_BULLETS];
+	struct bullet bs[NR_BULLETS];
 } ws;
 
+/* damage per bullet */
+static const uint8_t bullet_damage[NR_WEAPONS] = {1, 2, 3, 4};
 /* nr of frames until next bullet animation */
 static const uint8_t atime[NR_WEAPONS] = {FPS, FPS, FPS, FPS};
 /* nr of frames weapon is effective on ground */
@@ -545,17 +553,17 @@ static const uint8_t max_ammo[NR_WEAPONS] = {
 static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 {
 	uint8_t b;
-	struct bullet_state *bs = &ws.bs[0];
+	struct bullet *bs = &ws.bs[0];
 
 	if (ws.ammo[weapon] == 0)
 		return 0;
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
-		if (bs->active == 1)
+		if (bs->state != BULLET_INACTIVE)
 			continue;
 
-		bs->active = 1;
+		bs->state = BULLET_ACTIVE;
 		bs->weapon = weapon;
 		bs->x = x;
 		bs->ys = 5;
@@ -576,16 +584,20 @@ static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 static void update_bullets(void)
 {
 	uint8_t b;
-	struct bullet_state *bs = &ws.bs[0];
+	struct bullet *bs = &ws.bs[0];
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
-		if (bs->active == 0)
+		if (bs->state == BULLET_INACTIVE)
 			continue;
+		if (bs->state == BULLET_SPLASH) {
+			/* simple splash animation */
+			continue;
+		}
 
 		if (bs->ys == bs->ye) {
 			if (bs->etime == 0) {
-				bs->active = 0;
+				bs->state = BULLET_INACTIVE;
 				ws.ammo[bs->weapon]++;
 			} else
 				bs->etime--;
@@ -671,11 +683,11 @@ static void draw_scene(void)
 static void draw_bullets(void)
 {
 	uint8_t b;
-	struct bullet_state *bs = &ws.bs[0];
+	struct bullet *bs = &ws.bs[0];
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
-		if (bs->active == 0)
+		if (bs->state == BULLET_INACTIVE)
 			continue;
 		if (bs->ys == bs->ye)
 			blit_image_frame(bs->x,

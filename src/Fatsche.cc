@@ -623,17 +623,26 @@ static void update_bullets(void)
 	}
 }
 
-static uint8_t get_bullet_damage(uint8_t x, uint8_t y)
+static uint8_t get_bullet_damage(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
-	uint8_t b, damage = 0;
+	uint8_t b, damage = 0, hit;
 	struct bullet *bs = &ws.bs[0];
 
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
 		if (bs->state != BULLET_ACTIVE)
 			continue;
+		hit = 0;
 		/* check if it is a hit */
-		/* if hit change to state 2 */
-		/* add damage */
+		if (bs->x >= x && bs->x <= (x + w) && bs->ys >= y && bs->ys <= (y + h)) {
+			hit = 1;
+		}
+		if ((bs->x + 4) >= x && (bs->x + 4) <= (x + w) && (bs->ys + 4) >= y && (bs->ys + 4) <= (y + h)) {
+			hit = 1;
+		}
+		if (hit) {
+			damage += bullet_damage[bs->weapon];
+			bs->state = BULLET_SPLASH;
+		}
 	}
 
 	return damage;
@@ -720,7 +729,7 @@ static void update_enemies(void)
 		if (!e->active)
 			continue;
 		/* check if hit by bullet */
-		damage = get_bullet_damage(e->x, e->y);
+		damage = get_bullet_damage(e->x, e->y, 32, 32);
 		if (damage) {
 			e->previous_state = e->state;
 			e->state = ENEMY_EFFECT;

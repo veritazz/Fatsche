@@ -514,6 +514,7 @@ static enum game_states game_state = GAME_STATE_INIT;
 enum bullet_state {
 	BULLET_INACTIVE,
 	BULLET_ACTIVE,
+	BULLET_EFFECT,
 	BULLET_SPLASH,
 };
 
@@ -551,6 +552,11 @@ static const uint8_t max_ammo[NR_WEAPONS] = {
 	MAX_AMMO_W4,
 };
 
+#define UPPER_LANE			0
+#define LOWER_LANE			1
+
+static const uint8_t lane_y[2] = {56, 60};
+
 static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 {
 	uint8_t b;
@@ -568,10 +574,7 @@ static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 		bs->weapon = weapon;
 		bs->x = x;
 		bs->ys = 5;
-		if (lane)
-			bs->ye = 42;
-		else
-			bs->ye = 56;
+		bs->ye = lane_y[lane];
 		bs->atime = atime[weapon];
 		bs->etime = etime[weapon];
 		bs->mtime = mtime[weapon];
@@ -587,18 +590,11 @@ static void update_bullets(void)
 	uint8_t b;
 	struct bullet *bs = &ws.bs[0];
 
-	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
 		if (bs->state == BULLET_INACTIVE)
 			continue;
-		if (bs->state == BULLET_SPLASH) {
-			/* TODO simple splash animation */
-			bs->state = BULLET_INACTIVE;
-			ws.ammo[bs->weapon]++;
-			continue;
-		}
 
-		if (bs->ys == bs->ye) {
+		if (bs->state == BULLET_EFFECT || bs->state == BULLET_SPLASH) {
 			if (bs->etime == 0) {
 				bs->state = BULLET_INACTIVE;
 				ws.ammo[bs->weapon]++;
@@ -609,8 +605,10 @@ static void update_bullets(void)
 			if (bs->mtime == 0) {
 				bs->mtime = mtime[bs->weapon];
 				bs->ys++;
-				if (bs->ys == bs->ye)
+				if (bs->ys == bs->ye) {
 					bs->frame = 0;
+					bs->state = BULLET_EFFECT;
+				}
 			} else
 				bs->mtime--;
 		}
@@ -672,6 +670,22 @@ static const int8_t enemy_life[ENEMY_MAX] = {
 	16,
 };
 
+static const int8_t enemy_mtime[ENEMY_MAX] = {
+	FPS / 10,
+};
+
+static const int8_t enemy_atime[ENEMY_MAX] = {
+	FPS / 4,
+};
+
+static const int8_t enemy_score[ENEMY_MAX] = {
+	10,
+};
+
+static const uint8_t *enemy_sprites[ENEMY_MAX] = {
+	 enemy1_all_frames_img,
+};
+
 struct enemy {
 	int8_t life;
 	uint8_t x;
@@ -687,15 +701,14 @@ struct enemy {
 	uint8_t previous_state;
 };
 
-#define MAX_ENEMIES			1
+#define MAX_ENEMIES			3
 #define ENEMIES_SPAWN_RATE		FPS * 3 /* every 3 seconds */
 
 static struct enemy enemies[MAX_ENEMIES];
 
 static void spawn_new_enemies(void)
 {
-	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
-	uint8_t i;
+	uint8_t i, height;
 	struct enemy *e = &enemies[0];
 
 	/* update and spawn enemies */
@@ -704,44 +717,55 @@ static void spawn_new_enemies(void)
 			continue;
 		e->active = 1;
 		e->type = ENEMY_RAIDER;
-		e->lane = 1;
-		e->y = 40;
+		height = enemy_sprites[e->type][1];
+#ifdef HOST_TEST
+		e->lane = random() % 2;
+#else
+		e->lane = random(1);
+#endif
+		e->y = lane_y[e->lane] - height;
 		e->x = 127;
 		e->frame = 0;
 		e->state = ENEMY_WALKING_LEFT;
-		e->mtime = FPS / 2;
-		e->atime = FPS / 4;
+		e->mtime = enemy_mtime[e->type];
+		e->atime = enemy_atime[e->type];
 		e->life = enemy_life[e->type];
 		e->damage = enemy_damage[e->type];
 		break;
 	}
+	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
 }
 
 static void update_enemies(void)
 {
 	uint8_t damage;
-	uint8_t i;
+	uint8_t i, width, height;
 	struct enemy *e = &enemies[0];
 
 	/* update and spawn enemies */
 	for (i = 0; i < MAX_ENEMIES; i++, e++) {
 		if (!e->active)
 			continue;
+		width = enemy_sprites[e->type][0];
+		height = enemy_sprites[e->type][1];
 		/* check if hit by bullet */
-		damage = get_bullet_damage(e->x, e->y, 32, 32);
+		damage = get_bullet_damage(e->x, e->y, width, height);
 		if (damage) {
 			e->previous_state = e->state;
 			e->state = ENEMY_EFFECT;
 			e->life -= damage; /* bullet damage */
-			if (e->life <= 0)
+			if (e->life <= 0) {
 				e->state = ENEMY_DYING;
+				cs.score += enemy_score[e->type];
+			}
 		}
 		switch (e->state) {
 		case ENEMY_WALKING_LEFT:
 			/* next movement */
 			if (e->mtime == 0) {
-				e->mtime = FPS / 2;
-				e->x--;
+				e->mtime = enemy_mtime[e->type];
+				if (e->x != 16)
+					e->x--;
 			} else
 				e->mtime--;
 			break;
@@ -762,7 +786,7 @@ static void update_enemies(void)
 		}
 		/* next animation */
 		if (e->atime == 0) {
-			e->atime = FPS / 4;
+			e->atime = enemy_atime[e->type];
 			e->frame++;
 		} else
 			e->atime--;
@@ -974,8 +998,6 @@ run(void)
 		draw_bullets();
 		/* draw new score */
 		draw_score();
-		//HACK
-		cs.score++;
 		break;
 	case GAME_STATE_OVER:
 		rstate = PROGRAM_MAIN_MENU;

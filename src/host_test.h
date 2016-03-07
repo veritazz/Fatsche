@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define PROGMEM
 #define pgm_read_byte_near(a)		*(a)

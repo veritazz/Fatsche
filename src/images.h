@@ -11,8 +11,9 @@ extern const uint8_t water_bomb_impact_img[34];
 extern const uint8_t player_img[30];
 extern const uint8_t player_all_frames_img[386];
 extern const uint8_t enemy1_all_frames_img[2050];
+extern const uint8_t enemy_raider_img[258];
 extern const uint8_t numbers_3x5_img[32];
 
-/* total size 4654 bytes */
+/* total size 4912 bytes */
 
 #endif

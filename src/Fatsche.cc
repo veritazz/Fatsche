@@ -688,7 +688,7 @@ static const int8_t enemy_score[ENEMY_MAX] = {
 };
 
 static const uint8_t *enemy_sprites[ENEMY_MAX] = {
-	 enemy1_all_frames_img,
+	 enemy_raider_img,
 };
 
 struct enemy {
@@ -704,6 +704,7 @@ struct enemy {
 	uint8_t active:1;
 	uint8_t state;
 	uint8_t previous_state;
+	uint8_t sprite_offset;
 };
 
 #define MAX_ENEMIES			3
@@ -736,6 +737,7 @@ static void spawn_new_enemies(void)
 		e->atime = enemy_atime[e->type];
 		e->life = enemy_life[e->type];
 		e->damage = enemy_damage[e->type];
+		e->sprite_offset = 0;
 		break;
 	}
 	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
@@ -766,24 +768,33 @@ static void update_enemies(void)
 		}
 		switch (e->state) {
 		case ENEMY_WALKING_LEFT:
+			e->sprite_offset = 0;
 			/* next movement */
 			if (e->mtime == 0) {
 				e->mtime = enemy_mtime[e->type];
 				if (e->x != 16)
 					e->x--;
+				else
+					e->state = ENEMY_APPROACH_DOOR;
 			} else
 				e->mtime--;
 			break;
 		case ENEMY_APPROACH_DOOR:
+			e->state = ENEMY_ATTACKING;
+			break;
 		case ENEMY_WALKING_RIGHT:
+			e->sprite_offset = 0;
 			break;
 		case ENEMY_EFFECT:
 			/* invert current frame a few times */
 			e->state = e->previous_state;
 			break;
 		case ENEMY_MOVE_TO_UPPER_LANE:
+			break;
 		case ENEMY_MOVE_TO_LOWER_LANE:
+			break;
 		case ENEMY_ATTACKING:
+			e->sprite_offset = 4;
 			break;
 		case ENEMY_DYING:
 			e->active = 0;
@@ -833,9 +844,9 @@ static void draw_enemies(void)
 			continue;
 		blit_image_frame(e->x,
 				 e->y,
-				 enemy1_all_frames_img,
+				 enemy_sprites[e->type],
 				 NULL,
-				 e->frame,
+				 e->frame + e->sprite_offset,
 				 __flag_none);
 	}
 }

@@ -39,7 +39,8 @@ static uint8_t main_state = PROGRAM_MAIN_MENU;
 
 #ifndef HOST_TEST
 static void
-blit_image(int16_t x, int16_t y, const uint8_t *img, uint8_t flags)
+blit_image(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
+	   uint8_t flags)
 {
 	arduboy.drawBitmap(x,
 			   y,
@@ -50,7 +51,8 @@ blit_image(int16_t x, int16_t y, const uint8_t *img, uint8_t flags)
 }
 
 static void
-blit_image_frame(int16_t x, int16_t y, const uint8_t *img, uint8_t nr, uint8_t flags)
+blit_image_frame(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
+		 uint8_t nr, uint8_t flags)
 {
 	uint8_t w, h;
 
@@ -330,12 +332,13 @@ mainscreen(void)
 
 	/* print main screen */
 	if (!(menu_state & 1)) {
-		blit_image(0, 0, mainscreen_img, __flag_none);
+		blit_image(0, 0, mainscreen_img, NULL, __flag_none);
 
 		/* draw new item highlighted */
 		blit_image(MENU_ITEM_X,
 			   menu_item * MENU_ITEM_DISTANCE,
 			   menu_item_selected_img,
+			   NULL,
 			   __flag_none);
 
 		menu_state |= 1;
@@ -368,11 +371,13 @@ mainscreen(void)
 		blit_image(MENU_ITEM_X,
 			   ((menu_state >> 5) & 3) * MENU_ITEM_DISTANCE,
 			   menu_item_delete_img,
+			   NULL,
 			   __flag_1_transparent);
 		/* draw new item highlighted */
 		blit_image(MENU_ITEM_X,
 			   menu_item * MENU_ITEM_DISTANCE,
 			   menu_item_selected_img,
+			   NULL,
 			   __flag_none);
 		menu_state &= ~(0x3 << 5);
 		menu_state |= menu_item << 5;
@@ -813,6 +818,7 @@ static void draw_player(void)
 	blit_image_frame(cs.x,
 			 0,
 			 player_all_frames_img,
+			 NULL,
 			 player_frame_offsets[cs.state] + cs.frame,
 			 __flag_none);
 }
@@ -828,6 +834,7 @@ static void draw_enemies(void)
 		blit_image_frame(e->x,
 				 e->y,
 				 enemy1_all_frames_img,
+				 NULL,
 				 e->frame,
 				 __flag_none);
 	}
@@ -836,7 +843,7 @@ static void draw_enemies(void)
 static void draw_scene(void)
 {
 	/* draw main scene */
-	blit_image(0, 0, game_background_img, __flag_none);
+	blit_image(0, 0, game_background_img, NULL, __flag_none);
 
 	/* draw selected weapon */
 	draw_rect(0, 14 * ws.selected, 14, 14);
@@ -866,27 +873,35 @@ static void draw_bullets(void)
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
-		if (bs->state == BULLET_INACTIVE)
-			continue;
-		if (bs->ys == bs->ye)
+		switch (bs->state) {
+		case BULLET_EFFECT:
+		case BULLET_SPLASH:
 			blit_image_frame(bs->x,
 					 bs->ys,
 					 water_bomb_impact_img,
+					 NULL,
 					 bs->frame,
 					 __flag_none);
-		else
+			break;
+		case BULLET_ACTIVE:
 			blit_image_frame(bs->x,
 					 bs->ys,
 					 water_bomb_air_img,
+					 NULL,
 					 bs->frame,
 					 __flag_none);
+			break;
+		default:
+			break;
+		}
 	}
 }
 
 static void draw_number(uint8_t x, uint8_t y, int8_t number)
 {
-	if (number >= 0 && number <= 9)
-		blit_image_frame(x, y, numbers_3x5_img, number, __flag_none);
+	if (number < 0 || number > 9)
+		return;
+	blit_image_frame(x, y, numbers_3x5_img, NULL, number, __flag_none);
 }
 
 static void draw_score(void)

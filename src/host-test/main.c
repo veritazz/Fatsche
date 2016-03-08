@@ -60,7 +60,8 @@ get_inputs(void)
 }
 
 void
-blit_image(int16_t px, int16_t py, const uint8_t *img, uint8_t flags)
+blit_image(int16_t px, int16_t py, const uint8_t *img, const uint8_t *mask,
+	   uint8_t flags)
 {
 	int16_t x, y;
 	uint8_t w, h;
@@ -81,7 +82,8 @@ blit_image(int16_t px, int16_t py, const uint8_t *img, uint8_t flags)
 }
 
 void
-blit_image_frame(int16_t px, int16_t py, const uint8_t *img, uint8_t nr, uint8_t flags)
+blit_image_frame(int16_t px, int16_t py, const uint8_t *img,
+		 const uint8_t *mask, uint8_t nr, uint8_t flags)
 {
 	int16_t x, y;
 	uint8_t w, h, ws, hs;

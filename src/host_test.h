@@ -26,10 +26,12 @@ extern uint8_t get_inputs(void);
 extern void blit_image(int16_t x,
 		       int16_t y,
 		       const uint8_t *img,
+		       const uint8_t *mask,
 		       uint8_t flags);
 extern void blit_image_frame(int16_t x,
 			     int16_t y,
 			     const uint8_t *img,
+			     const uint8_t *mask,
 			     uint8_t nr,
 			     uint8_t flags);
 extern void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);

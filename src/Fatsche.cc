@@ -665,10 +665,22 @@ enum enemy_state {
 	ENEMY_MOVE_TO_LOWER_LANE,
 	ENEMY_ATTACKING,
 	ENEMY_DYING,
+	ENEMY_MAX_STATE,
+};
+
+static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
+	 0,
+	 0,
+	 0,
+	 0,
+	 8,
+	12,
+	 4,
+	 0,
 };
 
 static const uint8_t enemy_damage[] = {
-	0, 1, 2, 3, 4, 5, 6, 7,
+	1, 1, 2, 3, 4, 5, 6, 0,
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
@@ -712,6 +724,13 @@ struct enemy {
 
 static struct enemy enemies[MAX_ENEMIES];
 
+static void enemy_set_state(struct enemy *e, uint8_t state)
+{
+	e->previous_state = e->state;
+	e->state = state;
+	e->sprite_offset = enemy_sprite_offsets[state];
+}
+
 static void spawn_new_enemies(void)
 {
 	uint8_t i, height;
@@ -732,15 +751,24 @@ static void spawn_new_enemies(void)
 		e->y = lane_y[e->lane] - height;
 		e->x = 127;
 		e->frame = 0;
-		e->state = ENEMY_WALKING_LEFT;
 		e->mtime = enemy_mtime[e->type];
 		e->atime = enemy_atime[e->type];
 		e->life = enemy_life[e->type];
 		e->damage = enemy_damage[e->type];
-		e->sprite_offset = 0;
+		enemy_set_state(e, ENEMY_WALKING_LEFT);
 		break;
 	}
 	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
+}
+
+static void enemy_switch_lane(struct enemy *e, uint8_t lane)
+{
+	if (e->y == lane_y[lane])
+		return;
+	if (lane == UPPER_LANE)
+		e->y--;
+	else
+		e->y++;
 }
 
 static void update_enemies(void)
@@ -758,43 +786,47 @@ static void update_enemies(void)
 		/* check if hit by bullet */
 		damage = get_bullet_damage(e->x, e->y, width, height);
 		if (damage) {
-			e->previous_state = e->state;
-			e->state = ENEMY_EFFECT;
 			e->life -= damage; /* bullet damage */
 			if (e->life <= 0) {
-				e->state = ENEMY_DYING;
+				enemy_set_state(e, ENEMY_DYING);
 				cs.score += enemy_score[e->type];
-			}
+			} else
+				enemy_set_state(e, ENEMY_EFFECT);
 		}
 		switch (e->state) {
 		case ENEMY_WALKING_LEFT:
-			e->sprite_offset = 0;
 			/* next movement */
 			if (e->mtime == 0) {
 				e->mtime = enemy_mtime[e->type];
-				if (e->x != 16)
-					e->x--;
-				else
-					e->state = ENEMY_APPROACH_DOOR;
+				if (e->damage) {
+					if (e->x != 16)
+						e->x--;
+					else
+						enemy_set_state(e, ENEMY_APPROACH_DOOR);
+				} else {
+					/* TODO peaceful enemies just pass by */
+				}
 			} else
 				e->mtime--;
 			break;
 		case ENEMY_APPROACH_DOOR:
-			e->state = ENEMY_ATTACKING;
+			if (e->lane != UPPER_LANE)
+				enemy_switch_lane(e, UPPER_LANE);
+			else
+				enemy_set_state(e, ENEMY_ATTACKING);
 			break;
 		case ENEMY_WALKING_RIGHT:
-			e->sprite_offset = 0;
 			break;
 		case ENEMY_EFFECT:
 			/* invert current frame a few times */
-			e->state = e->previous_state;
+			enemy_set_state(e, e->previous_state);
 			break;
 		case ENEMY_MOVE_TO_UPPER_LANE:
 			break;
 		case ENEMY_MOVE_TO_LOWER_LANE:
 			break;
 		case ENEMY_ATTACKING:
-			e->sprite_offset = 4;
+			/* do door damage */
 			break;
 		case ENEMY_DYING:
 			e->active = 0;

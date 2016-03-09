@@ -414,7 +414,7 @@ load(void)
  * game handling
  *---------------------------------------------------------------------------*/
 static struct character_state {
-	uint8_t life; /* remaining life of player */
+	int16_t life; /* remaining life of player */
 	uint8_t x; /* current x position of player */
 	uint8_t atime; /* nr of frames till next frame of sprite */
 	uint8_t frame:2; /* current frame of sprite */
@@ -526,10 +526,11 @@ enum bullet_state {
 struct bullet {
 	uint8_t x; /* x position of bullet */
 	uint8_t ys; /* y start position of the bullet */
-	uint8_t ye; /* y end position of the bullet */
+//	uint8_t ye; /* y end position of the bullet */
 	uint8_t state:2;
 	uint8_t weapon:2;
 	uint8_t frame:2;
+	uint8_t lane:1;
 	uint8_t atime; /* nr of frames it take for the next animation frame */
 	uint8_t etime; /* nr of frames a weapon has effect on the ground */
 	uint8_t mtime; /* nr of frames it takes to move */
@@ -579,7 +580,8 @@ static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 		bs->weapon = weapon;
 		bs->x = x;
 		bs->ys = 5;
-		bs->ye = lane_y[lane];
+		bs->lane = lane;
+//		bs->ye = lane_y[lane];
 		bs->atime = atime[weapon];
 		bs->etime = etime[weapon];
 		bs->mtime = mtime[weapon];
@@ -610,7 +612,7 @@ static void update_bullets(void)
 			if (bs->mtime == 0) {
 				bs->mtime = mtime[bs->weapon];
 				bs->ys++;
-				if (bs->ys == bs->ye) {
+				if (bs->ys == lane_y[bs->lane]) { //bs->ye) {
 					bs->frame = 0;
 					bs->state = BULLET_EFFECT;
 				}
@@ -626,13 +628,15 @@ static void update_bullets(void)
 	}
 }
 
-static uint8_t get_bullet_damage(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
 	uint8_t b, damage = 0, hit;
 	struct bullet *bs = &ws.bs[0];
 
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
 		if (bs->state != BULLET_ACTIVE)
+			continue;
+		if (bs->lane != lane)
 			continue;
 		hit = 0;
 		/* check if it is a hit */
@@ -671,11 +675,11 @@ enum enemy_state {
 static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0,
 	 0,
-	 0,
-	 0,
-	 8,
-	12,
 	 4,
+	 0,
+	12,
+	16,
+	 8,
 	 0,
 };
 
@@ -719,7 +723,7 @@ struct enemy {
 	uint8_t sprite_offset;
 };
 
-#define MAX_ENEMIES			3
+#define MAX_ENEMIES			1
 #define ENEMIES_SPAWN_RATE		FPS * 3 /* every 3 seconds */
 
 static struct enemy enemies[MAX_ENEMIES];
@@ -729,6 +733,7 @@ static void enemy_set_state(struct enemy *e, uint8_t state)
 	e->previous_state = e->state;
 	e->state = state;
 	e->sprite_offset = enemy_sprite_offsets[state];
+	e->frame = 0;
 }
 
 static void spawn_new_enemies(void)
@@ -761,10 +766,19 @@ static void spawn_new_enemies(void)
 	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
 }
 
-static void enemy_switch_lane(struct enemy *e, uint8_t lane)
+static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 {
-	if (e->y == lane_y[lane])
+	if (e->y == y) {
+		e->lane = lane;
 		return;
+	}
+
+	if (e->mtime != 0) {
+		e->mtime--;
+		return;
+	}
+	e->mtime = enemy_mtime[e->type];
+
 	if (lane == UPPER_LANE)
 		e->y--;
 	else
@@ -784,7 +798,7 @@ static void update_enemies(void)
 		width = enemy_sprites[e->type][0];
 		height = enemy_sprites[e->type][1];
 		/* check if hit by bullet */
-		damage = get_bullet_damage(e->x, e->y, width, height);
+		damage = get_bullet_damage(e->lane, e->x, e->y, width, height);
 		if (damage) {
 			e->life -= damage; /* bullet damage */
 			if (e->life <= 0) {
@@ -811,7 +825,7 @@ static void update_enemies(void)
 			break;
 		case ENEMY_APPROACH_DOOR:
 			if (e->lane != UPPER_LANE)
-				enemy_switch_lane(e, UPPER_LANE);
+				enemy_set_state(e, ENEMY_MOVE_TO_UPPER_LANE);
 			else
 				enemy_set_state(e, ENEMY_ATTACKING);
 			break;
@@ -822,11 +836,27 @@ static void update_enemies(void)
 			enemy_set_state(e, e->previous_state);
 			break;
 		case ENEMY_MOVE_TO_UPPER_LANE:
+			if (e->lane != UPPER_LANE)
+				enemy_switch_lane(e,
+						  UPPER_LANE,
+						  lane_y[UPPER_LANE] - height);
+			else
+				enemy_set_state(e, e->previous_state);
 			break;
 		case ENEMY_MOVE_TO_LOWER_LANE:
+			if (e->lane != LOWER_LANE)
+				enemy_switch_lane(e,
+						  LOWER_LANE,
+						  lane_y[LOWER_LANE] - height);
+			else
+				enemy_set_state(e, e->previous_state);
 			break;
 		case ENEMY_ATTACKING:
 			/* do door damage */
+			if (e->frame == 0) {
+				printf("\n\r ---- %d %d\n\r", enemy_damage[e->type], cs.life);
+				cs.life -= enemy_damage[e->type];
+			}
 			break;
 		case ENEMY_DYING:
 			e->active = 0;
@@ -848,7 +878,7 @@ static void update_scene(void)
 
 static int check_game_over(void)
 {
-	if (cs.life == 0)
+	if (cs.life <= 0)
 		return 1;
 	return 0;
 }
@@ -1030,11 +1060,11 @@ run(void)
 		}
 		if (a()) {
 			/* throws bullet to the lower lane of the street */
-			throws = new_bullet(cs.x, 0, ws.selected);
+			throws = new_bullet(cs.x, LOWER_LANE, ws.selected);
 		}
 		if (b()) {
 			/* throws bullet to the upper lane of the street */
-			throws = new_bullet(cs.x, 1, ws.selected);
+			throws = new_bullet(cs.x, UPPER_LANE, ws.selected);
 		}
 
 		/* update bullets */

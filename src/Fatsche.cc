@@ -668,6 +668,7 @@ enum enemy_state {
 	ENEMY_MOVE_TO_UPPER_LANE,
 	ENEMY_MOVE_TO_LOWER_LANE,
 	ENEMY_ATTACKING,
+	ENEMY_RESTING,
 	ENEMY_DYING,
 	ENEMY_MAX_STATE,
 };
@@ -681,6 +682,7 @@ static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	16,
 	 8,
 	 0,
+	 0,
 };
 
 static const uint8_t enemy_damage[] = {
@@ -693,6 +695,10 @@ static const int8_t enemy_life[ENEMY_MAX] = {
 
 static const int8_t enemy_mtime[ENEMY_MAX] = {
 	FPS / 10,
+};
+
+static const int8_t enemy_rtime[ENEMY_MAX] = {
+	FPS,
 };
 
 static const int8_t enemy_atime[ENEMY_MAX] = {
@@ -713,6 +719,7 @@ struct enemy {
 	uint8_t y;
 	uint8_t type;
 	uint8_t atime; /* nr of frames it take for the next animation frame */
+	uint8_t rtime; /* nr of frames it takes to rest */
 	uint8_t mtime; /* nr of frames it takes to move */
 	uint8_t damage:3;
 	uint8_t frame:2;
@@ -757,6 +764,7 @@ static void spawn_new_enemies(void)
 		e->x = 127;
 		e->frame = 0;
 		e->mtime = enemy_mtime[e->type];
+		e->rtime = enemy_rtime[e->type];
 		e->atime = enemy_atime[e->type];
 		e->life = enemy_life[e->type];
 		e->damage = enemy_damage[e->type];
@@ -853,10 +861,17 @@ static void update_enemies(void)
 			break;
 		case ENEMY_ATTACKING:
 			/* do door damage */
-			if (e->frame == 0) {
-				printf("\n\r ---- %d %d\n\r", enemy_damage[e->type], cs.life);
+			if (e->frame == 3 && e->atime == 0) {
 				cs.life -= enemy_damage[e->type];
+				enemy_set_state(e, ENEMY_RESTING);
 			}
+			break;
+		case ENEMY_RESTING:
+			if (e->rtime == 0) {
+				e->rtime = enemy_rtime[e->type];
+				enemy_set_state(e, e->previous_state);
+			} else
+				e->rtime--;
 			break;
 		case ENEMY_DYING:
 			e->active = 0;

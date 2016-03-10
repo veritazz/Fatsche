@@ -681,7 +681,7 @@ static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	12,
 	16,
 	 8,
-	 0,
+	20,
 	 0,
 };
 
@@ -702,7 +702,7 @@ static const int8_t enemy_rtime[ENEMY_MAX] = {
 };
 
 static const int8_t enemy_atime[ENEMY_MAX] = {
-	FPS / 4,
+	FPS / 10,
 };
 
 static const int8_t enemy_score[ENEMY_MAX] = {

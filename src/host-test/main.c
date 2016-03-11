@@ -4,6 +4,13 @@
 
 #include <ncurses.h>
 
+#define __flag_none                  (0)
+#define __flag_color_invert          (1 << 0)
+#define __flag_h_mirror              (1 << 1)
+#define __flag_v_mirror              (1 << 2)
+#define __flag_black                 (1 << 3)
+#define __flag_white                 (1 << 4)
+
 #define WIDTH		128
 #define HEIGHT		64
 static char fb[WIDTH * HEIGHT];
@@ -91,6 +98,7 @@ blit_image_frame(int16_t px, int16_t py, const uint8_t *img,
 	uint16_t bit = 0;
 	uint16_t byte = 2;
 	const uint8_t *p;
+	uint8_t value;
 
 	w = img[0];
 	h = img[1];
@@ -106,7 +114,13 @@ blit_image_frame(int16_t px, int16_t py, const uint8_t *img,
 
 	for (y = py; y < (py + hs); y++) {
 		for (x = px; x < (px + ws); x++) {
-			fb[y * WIDTH + x] = (p[(y - py) / 8 * w + (x - px) + 2] & (0x80 >> ((y - py) % 8))? '+': ' ');
+			value = p[(y - py) / 8 * w + (x - px) + 2] & (0x80 >> ((y - py) % 8));
+			if (value && (flags & __flag_white))
+				fb[y * WIDTH + x] = '+';
+			else if (value && (flags & __flag_black))
+				fb[y * WIDTH + x] = ' ';
+			else
+				fb[y * WIDTH + x] = value ? '+': ' ';
 		}
 	}
 }

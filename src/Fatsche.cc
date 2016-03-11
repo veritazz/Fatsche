@@ -34,8 +34,8 @@ static uint8_t main_state = PROGRAM_MAIN_MENU;
 #define __flag_color_invert          (1 << 0)
 #define __flag_h_mirror              (1 << 1)
 #define __flag_v_mirror              (1 << 2)
-#define __flag_0_transparent         (1 << 3)
-#define __flag_1_transparent         (1 << 4)
+#define __flag_black                 (1 << 3)
+#define __flag_white                 (1 << 4)
 
 #ifndef HOST_TEST
 static void
@@ -384,7 +384,7 @@ mainscreen(void)
 			   ((menu_state >> 5) & 3) * MENU_ITEM_DISTANCE,
 			   menu_item_delete_img,
 			   NULL,
-			   __flag_1_transparent);
+			   __flag_white);
 		/* draw new item highlighted */
 		blit_image(MENU_ITEM_X,
 			   menu_item * MENU_ITEM_DISTANCE,

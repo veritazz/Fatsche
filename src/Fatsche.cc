@@ -86,6 +86,7 @@ draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 enum timers {
 	TIMER_PLAYER_RESTS,
 	TIMER_ENEMY_SPAWN,
+	TIMER_LIFE_CRITICAL,
 	TIMER_MAX,
 };
 
@@ -432,6 +433,7 @@ enum player_states {
 };
 
 #define PLAYER_REST_TIMEOUT                  FPS * 5
+#define PLAYER_MAX_LIFE                      256
 
 /* delay per frame in each state */
 static const uint8_t player_timings[PLAYER_MAX_STATES] = {
@@ -686,7 +688,7 @@ static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 };
 
 static const uint8_t enemy_damage[] = {
-	1, 1, 2, 3, 4, 5, 6, 0,
+	40, 1, 2, 3, 4, 5, 6, 0,
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
@@ -694,7 +696,7 @@ static const int8_t enemy_life[ENEMY_MAX] = {
 };
 
 static const int8_t enemy_mtime[ENEMY_MAX] = {
-	FPS / 10,
+	FPS / 20,
 };
 
 static const int8_t enemy_rtime[ENEMY_MAX] = {
@@ -721,7 +723,7 @@ struct enemy {
 	uint8_t atime; /* nr of frames it take for the next animation frame */
 	uint8_t rtime; /* nr of frames it takes to rest */
 	uint8_t mtime; /* nr of frames it takes to move */
-	uint8_t damage:3;
+	uint8_t damage;
 	uint8_t frame:2;
 	uint8_t lane:1;
 	uint8_t active:1;
@@ -928,8 +930,19 @@ static void draw_enemies(void)
 	}
 }
 
+static void player_life_critical(void)
+{
+	static uint8_t state = 0;
+	if (state & 1)
+		draw_rect(8, 53, 25, 7);
+	state++;
+	start_timer(TIMER_LIFE_CRITICAL, FPS / 2);
+}
+
 static void draw_scene(void)
 {
+	int16_t life_level;
+
 	/* draw main scene */
 	blit_image(0, 0, game_background_img, NULL, __flag_none);
 
@@ -948,6 +961,18 @@ static void draw_scene(void)
 	}
 
 	/* draw current life */
+	life_level = cs.life * 4 / PLAYER_MAX_LIFE;
+	if (life_level == 1)
+		start_timer(TIMER_LIFE_CRITICAL, FPS / 2);
+	else
+		draw_rect(8, 53, 25, 7);
+
+	while (life_level--) {
+		draw_filled_rect(10 + (5 * life_level),
+				 55,
+				 2,
+				 3);
+	}
 
 	/* draw weather animation */
 
@@ -1022,7 +1047,7 @@ run(void)
 	case GAME_STATE_INIT:
 		init_timers();
 		/* init character state */
-		cs.life = 255;
+		cs.life = PLAYER_MAX_LIFE;
 		cs.x = 20;
 		cs.frame = 0;
 		cs.score = 0;
@@ -1037,6 +1062,7 @@ run(void)
 		setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
 		start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
 		game_state = GAME_STATE_PROGRAM_RUN_GAME;
+		setup_timer(TIMER_LIFE_CRITICAL, player_life_critical);
 		break;
 	case GAME_STATE_PROGRAM_RUN_GAME:
 		/* check for game over */

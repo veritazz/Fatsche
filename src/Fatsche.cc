@@ -86,7 +86,7 @@ draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 enum timers {
 	TIMER_PLAYER_RESTS,
 	TIMER_ENEMY_SPAWN,
-	TIMER_LIFE_CRITICAL,
+	TIMER_500MS,
 	TIMER_MAX,
 };
 
@@ -134,6 +134,17 @@ static void stop_timer(uint8_t id)
 {
 	timers[id].active = 0;
 }
+
+/*---------------------------------------------------------------------------
+ * general purpose timers
+ *---------------------------------------------------------------------------*/
+static uint8_t timer_500ms_ticks = 0;
+static void timer_500ms_counter(void)
+{
+	timer_500ms_ticks++;
+	start_timer(TIMER_500MS, FPS / 2);
+}
+
 /*---------------------------------------------------------------------------
  * inputs
  *---------------------------------------------------------------------------*/
@@ -528,7 +539,6 @@ enum bullet_state {
 struct bullet {
 	uint8_t x; /* x position of bullet */
 	uint8_t ys; /* y start position of the bullet */
-//	uint8_t ye; /* y end position of the bullet */
 	uint8_t state:2;
 	uint8_t weapon:2;
 	uint8_t frame:2;
@@ -583,7 +593,6 @@ static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 		bs->x = x;
 		bs->ys = 5;
 		bs->lane = lane;
-//		bs->ye = lane_y[lane];
 		bs->atime = atime[weapon];
 		bs->etime = etime[weapon];
 		bs->mtime = mtime[weapon];
@@ -614,7 +623,7 @@ static void update_bullets(void)
 			if (bs->mtime == 0) {
 				bs->mtime = mtime[bs->weapon];
 				bs->ys++;
-				if (bs->ys == lane_y[bs->lane]) { //bs->ye) {
+				if (bs->ys == lane_y[bs->lane]) {
 					bs->frame = 0;
 					bs->state = BULLET_EFFECT;
 				}
@@ -930,15 +939,6 @@ static void draw_enemies(void)
 	}
 }
 
-static void player_life_critical(void)
-{
-	static uint8_t state = 0;
-	if (state & 1)
-		draw_rect(8, 53, 25, 7);
-	state++;
-	start_timer(TIMER_LIFE_CRITICAL, FPS / 2);
-}
-
 static void draw_scene(void)
 {
 	int16_t life_level;
@@ -951,25 +951,27 @@ static void draw_scene(void)
 
 	/* draw current ammo level */
 	for (uint8_t i = 0; i < NR_WEAPONS; i++) {
-		uint8_t level = ws.ammo[i] * 4 / max_ammo[i];
+		uint8_t level = (ws.ammo[i] * 4 + max_ammo[i] - 1) / max_ammo[i];
 		while (level--) {
 			draw_filled_rect(10,
-					 12 + (14 * i) - (level + 1) * 2,
+					 12 + (14 * i) - level * 2,
 					 2,
 					 1);
 		}
 	}
 
 	/* draw current life */
-	life_level = cs.life * 4 / PLAYER_MAX_LIFE;
-	if (life_level == 1)
-		start_timer(TIMER_LIFE_CRITICAL, FPS / 2);
-	else
-		draw_rect(8, 53, 25, 7);
+	life_level = (cs.life * 4 + PLAYER_MAX_LIFE - 1) / PLAYER_MAX_LIFE;
+	if (life_level > 2) {
+		draw_rect(0, 57, 15, 7);
+	} else {
+		if (timer_500ms_ticks & 1)
+			draw_rect(0, 57, 15, 7);
+	}
 
 	while (life_level--) {
-		draw_filled_rect(10 + (5 * life_level),
-				 55,
+		draw_filled_rect(2 + (3 * life_level),
+				 59,
 				 2,
 				 3);
 	}
@@ -1062,7 +1064,10 @@ run(void)
 		setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
 		start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
 		game_state = GAME_STATE_PROGRAM_RUN_GAME;
-		setup_timer(TIMER_LIFE_CRITICAL, player_life_critical);
+		/* setup general purpose 500ms counting timer */
+		timer_500ms_ticks = 0;
+		setup_timer(TIMER_500MS, timer_500ms_counter);
+		start_timer(TIMER_500MS, FPS / 2);
 		break;
 	case GAME_STATE_PROGRAM_RUN_GAME:
 		/* check for game over */

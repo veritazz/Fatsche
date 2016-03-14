@@ -37,6 +37,9 @@ static uint8_t main_state = PROGRAM_MAIN_MENU;
 #define __flag_black                 (1 << 3)
 #define __flag_white                 (1 << 4)
 
+#define img_width(i)                 pgm_read_byte_near((i) + 0)
+#define img_height(i)                pgm_read_byte_near((i) + 1)
+
 #ifndef HOST_TEST
 static void
 blit_image(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
@@ -45,8 +48,8 @@ blit_image(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
 	arduboy.drawBitmap(x,
 			   y,
 			   img + 2,
-			   pgm_read_byte_near(img), /* width */
-			   pgm_read_byte_near(img + 1), /* height */
+			   img_width(img),
+			   img_height(img),
 			   WHITE);
 }
 
@@ -56,14 +59,14 @@ blit_image_frame(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
 {
 	uint8_t w, h;
 
-	w = pgm_read_byte_near(img);
-	h = pgm_read_byte_near(img + 1);
+	w = img_width(img);
+	h = img_height(img);
 
 	arduboy.drawBitmap(x,
 			   y,
 			   img + (w * ((h + 7) / 8) * nr) + 2,
-			   w, /* width */
-			   h, /* height */
+			   w,
+			   h,
 			   WHITE);
 }
 
@@ -817,8 +820,8 @@ static void update_enemies(void)
 	for (i = 0; i < MAX_ENEMIES; i++, e++) {
 		if (!e->active)
 			continue;
-		width = enemy_sprites[e->type][0];
-		height = enemy_sprites[e->type][1];
+		width = img_width(enemy_sprites[e->type]);
+		height = img_height(enemy_sprites[e->type]);
 		/* check if hit by bullet */
 		damage = get_bullet_damage(e->lane, e->x, e->y, width, height);
 		if (damage) {

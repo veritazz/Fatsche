@@ -232,6 +232,7 @@ static uint8_t next_frame(void)
 	if (ntime > current_time) {
 		current_time = ntime + (1000 / FPS);
 		new_frame = 1;
+		clear_screen();
 		update_inputs();
 		run_timers();
 	}
@@ -240,7 +241,8 @@ static uint8_t next_frame(void)
 		static unsigned int frames = 0;
 		if (new_frame) {
 			frames++;
-			printf("ms per frame %u ntime %lu current_time %lu frames %u\n",
+			printf("\x1b[%d;%df", 65, 0);
+			printf("ms per frame %u ntime %lu current_time %lu frames %u\n\r",
 			       1000 / FPS,
 			       ntime,
 			       current_time,
@@ -251,6 +253,7 @@ static uint8_t next_frame(void)
 	return new_frame;
 #else
 	if (arduboy.nextFrame()) {
+		arduboy.clear();
 		buttons.poll();
 		run_timers();
 		return 1;
@@ -514,7 +517,7 @@ static void update_player(int8_t dx, uint8_t throws)
 
 enum game_states {
 	GAME_STATE_INIT = 0,
-	GAME_STATE_PROGRAM_RUN_GAME,
+	GAME_STATE_RUN_GAME,
 	GAME_STATE_OVER,
 };
 
@@ -697,7 +700,7 @@ static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 };
 
 static const uint8_t enemy_damage[] = {
-	40, 1, 2, 3, 4, 5, 6, 0,
+	1, 1, 2, 3, 4, 5, 6, 0,
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
@@ -1063,13 +1066,13 @@ run(void)
 		/* setup timer for enemy spawning */
 		setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
 		start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
-		game_state = GAME_STATE_PROGRAM_RUN_GAME;
+		game_state = GAME_STATE_RUN_GAME;
 		/* setup general purpose 500ms counting timer */
 		timer_500ms_ticks = 0;
 		setup_timer(TIMER_500MS, timer_500ms_counter);
 		start_timer(TIMER_500MS, FPS / 2);
 		break;
-	case GAME_STATE_PROGRAM_RUN_GAME:
+	case GAME_STATE_RUN_GAME:
 		/* check for game over */
 		if (check_game_over()) {
 			init_timers();

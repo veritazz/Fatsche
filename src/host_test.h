@@ -9,6 +9,7 @@
 
 #define PROGMEM
 #define pgm_read_byte_near(a)		*(a)
+#define pgm_read_byte(a)		*(a)
 
 #ifdef __cplusplus
 extern "C"
@@ -36,6 +37,7 @@ extern void blit_image_frame(int16_t x,
 			     uint8_t flags);
 extern void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 extern void draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+extern void clear_screen(void);
 #ifdef __cplusplus
 }
 #endif

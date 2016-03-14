@@ -1,4 +1,4 @@
-CFLAGS  = -DHOST_TEST
+CFLAGS  = -std=c99 -DHOST_TEST
 CFLAGS += -I../
 
 target=host_test

@@ -666,6 +666,7 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 		if (hit) {
 			damage += bullet_damage[bs->weapon];
 			bs->state = BULLET_SPLASH;
+			bs->etime = FPS / 4;
 		}
 	}
 
@@ -754,10 +755,12 @@ static struct enemy enemies[MAX_ENEMIES];
 
 static void enemy_set_state(struct enemy *e, uint8_t state)
 {
-	e->previous_state = e->state;
+	if (state != ENEMY_EFFECT && e->state != ENEMY_EFFECT) {
+		e->previous_state = e->state;
+		e->sprite_offset = enemy_sprite_offsets[state];
+		e->frame = 0;
+	}
 	e->state = state;
-	e->sprite_offset = enemy_sprite_offsets[state];
-	e->frame = 0;
 }
 
 static void spawn_new_enemies(void)
@@ -785,6 +788,7 @@ static void spawn_new_enemies(void)
 		e->atime = enemy_atime[e->type];
 		e->life = enemy_life[e->type];
 		e->damage = enemy_damage[e->type];
+		enemy_set_state(e, ENEMY_WALKING_LEFT);
 		enemy_set_state(e, ENEMY_WALKING_LEFT);
 		break;
 	}
@@ -829,8 +833,10 @@ static void update_enemies(void)
 			if (e->life <= 0) {
 				enemy_set_state(e, ENEMY_DYING);
 				cs.score += enemy_score[e->type];
-			} else
+			} else {
 				enemy_set_state(e, ENEMY_EFFECT);
+				e->atime = FPS;
+			}
 		}
 		switch (e->state) {
 		case ENEMY_WALKING_LEFT:
@@ -857,8 +863,8 @@ static void update_enemies(void)
 		case ENEMY_WALKING_RIGHT:
 			break;
 		case ENEMY_EFFECT:
-			/* invert current frame a few times */
-			enemy_set_state(e, e->previous_state);
+			if (e->atime == 0)
+				enemy_set_state(e, e->previous_state);
 			break;
 		case ENEMY_MOVE_TO_UPPER_LANE:
 			if (e->lane != UPPER_LANE)
@@ -930,18 +936,25 @@ static void draw_player(void)
 
 static void draw_enemies(void)
 {
-	uint8_t i;
+	uint8_t i, show = 1;
 	struct enemy *e = &enemies[0];
 
 	for (i = 0; i < MAX_ENEMIES; i++, e++) {
 		if (!e->active)
 			continue;
-		blit_image_frame(e->x,
-				 e->y,
-				 enemy_sprites[e->type],
-				 NULL,
-				 e->frame + e->sprite_offset,
-				 __flag_none);
+		switch (e->state) {
+		case ENEMY_EFFECT:
+			show = e->atime & 1;
+			break;
+		}
+		if (show) {
+			blit_image_frame(e->x,
+					 e->y,
+					 enemy_sprites[e->type],
+					 NULL,
+					 e->frame + e->sprite_offset,
+					 __flag_none);
+		}
 	}
 }
 

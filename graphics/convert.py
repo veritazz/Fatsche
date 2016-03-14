@@ -26,7 +26,7 @@ def write_image(width, height, data, f):
 					break
 				c = data[(h + row * 8) * width + w]
 				if c:
-					f_data[o] = f_data[o] | (0x80 >> h)
+					f_data[o] = f_data[o] | (0x1 << h)
 			o += 1
 
 	for b in range(size):

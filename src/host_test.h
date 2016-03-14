@@ -7,6 +7,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define WIDTH		128
+#define HEIGHT		64
+
 #define PROGMEM
 #define pgm_read_byte_near(a)		*(a)
 #define pgm_read_byte(a)		*(a)

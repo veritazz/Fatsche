@@ -947,6 +947,7 @@ static void draw_enemies(void)
 
 static void draw_scene(void)
 {
+	static uint8_t lamp_frame = 0;
 	int16_t life_level;
 
 	/* draw main scene */
@@ -984,7 +985,20 @@ static void draw_scene(void)
 
 	/* draw weather animation */
 
+	if (timer_500ms_ticks & 1) {
+#ifdef HOST_TEST
+		lamp_frame = random() % 2;
+#else
+		lamp_frame = random(64) % 2;
+#endif
+	}
 	/* draw lamp animation */
+	blit_image_frame(70,
+			 HEIGHT - img_height(scene_lamp_img),
+			 scene_lamp_img,
+			 NULL,
+			 lamp_frame,
+			 __flag_none);
 }
 
 static void draw_bullets(void)

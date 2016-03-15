@@ -596,8 +596,9 @@ static const uint8_t max_ammo[NR_WEAPONS] = {
 
 #define UPPER_LANE			0
 #define LOWER_LANE			1
+#define DOOR_LANE			2
 
-static const uint8_t lane_y[2] = {56, 60};
+static const uint8_t lane_y[3] = {56, 60, 52};
 
 static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 {
@@ -672,7 +673,8 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 		if (bs->state != BULLET_ACTIVE)
 			continue;
 		if (bs->lane != lane)
-			continue;
+			if (bs->lane != UPPER_LANE && lane == DOOR_LANE)
+				continue;
 		hit = 0;
 		/* check if it is a hit */
 		if (bs->x >= x && bs->x <= (x + w) && bs->ys >= y && bs->ys <= (y + h)) {
@@ -763,8 +765,8 @@ struct enemy {
 	uint8_t mtime; /* nr of frames it takes to move */
 	uint8_t damage;
 	uint8_t frame:2;
-	uint8_t lane:1;
-	uint8_t dlane:1;
+	uint8_t lane:2;
+	uint8_t dlane:2;
 	uint8_t active:1;
 	uint8_t state;
 	uint8_t previous_state;
@@ -828,7 +830,7 @@ static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 	if (e->mtime != 0)
 		return;
 
-	if (lane == UPPER_LANE)
+	if (e->y > y)
 		e->y--;
 	else
 		e->y++;
@@ -869,7 +871,7 @@ static void update_enemies(void)
 				break;
 
 			if (e->damage) {
-				if (e->x == 16)
+				if (e->x == 24)
 					enemy_set_state(e, ENEMY_APPROACH_DOOR);
 			} else {
 				/* TODO peaceful enemies just pass by */
@@ -888,7 +890,8 @@ static void update_enemies(void)
 			}
 			door.under_attack = 1;
 			door.attacker = e;
-			if (e->lane != UPPER_LANE)
+			e->dlane = DOOR_LANE;
+			if (e->lane != e->dlane)
 				enemy_set_state(e, ENEMY_MOVE_TO_UPPER_LANE);
 			else
 				enemy_set_state(e, ENEMY_ATTACKING);
@@ -918,18 +921,11 @@ static void update_enemies(void)
 				enemy_set_state(e, e->previous_state);
 			break;
 		case ENEMY_MOVE_TO_UPPER_LANE:
-			if (e->lane != UPPER_LANE)
-				enemy_switch_lane(e,
-						  UPPER_LANE,
-						  lane_y[UPPER_LANE] - height);
-			else
-				enemy_set_state(e, e->previous_state);
-			break;
 		case ENEMY_MOVE_TO_LOWER_LANE:
-			if (e->lane != LOWER_LANE)
+			if (e->lane != e->dlane)
 				enemy_switch_lane(e,
-						  LOWER_LANE,
-						  lane_y[LOWER_LANE] - height);
+						  e->dlane,
+						  lane_y[e->dlane] - height);
 			else
 				enemy_set_state(e, e->previous_state);
 			break;

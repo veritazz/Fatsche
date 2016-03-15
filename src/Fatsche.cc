@@ -14,18 +14,31 @@ SimpleButtons buttons(arduboy);
 #include <stdint.h>
 #include "images.h"
 
-/* frame rate of the game */
-#define FPS                         30
+/*---------------------------------------------------------------------------
+ * game parameters
+ *---------------------------------------------------------------------------*/
+#define FPS                         30        /* frame rate */
+#define MAX_ENEMIES                 1         /* max enemies on the scene */
+#define ENEMIES_SPAWN_RATE          (FPS * 3) /* every 3 seconds */
+#define PLAYER_REST_TIMEOUT         (FPS * 5) /* players timeout for resting */
+#define PLAYER_MAX_LIFE             256       /* initial players life */
+#define NR_WEAPONS                  4
+#define MAX_AMMO_W1                 16
+#define MAX_AMMO_W2                 12
+#define MAX_AMMO_W3                 8
+#define MAX_AMMO_W4                 4
+#define NR_BULLETS                  \
+	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
 
+/*---------------------------------------------------------------------------
+ * program states
+ *---------------------------------------------------------------------------*/
 enum program_states {
 	PROGRAM_MAIN_MENU = 0,
 	PROGRAM_LOAD_GAME,
 	PROGRAM_RUN_GAME,
 	PROGRAM_SHOW_HELP,
 };
-
-/* state of the program */
-static uint8_t main_state = PROGRAM_MAIN_MENU;
 
 /*---------------------------------------------------------------------------
  * graphic functions
@@ -286,7 +299,6 @@ setup(void)
 	arduboy.initRandomSeed();
 	arduboy.setFrameRate(FPS);
 	arduboy.begin();
-	/* TODO check */
 	arduboy.clear();
 	arduboy.display();
 	init_timers();
@@ -449,9 +461,6 @@ enum player_states {
 	PLAYER_MAX_STATES,
 };
 
-#define PLAYER_REST_TIMEOUT                  FPS * 5
-#define PLAYER_MAX_LIFE                      256
-
 /* delay per frame in each state */
 static const uint8_t player_timings[PLAYER_MAX_STATES] = {
 	FPS / 5, /* moving left */
@@ -522,19 +531,15 @@ enum game_states {
 	GAME_STATE_INIT = 0,
 	GAME_STATE_RUN_GAME,
 	GAME_STATE_OVER,
+	GAME_STATE_CLEANUP,
 };
 
 // XXX
 static enum game_states game_state = GAME_STATE_INIT;
 
-#define NR_WEAPONS		4
-#define MAX_AMMO_W1		16
-#define MAX_AMMO_W2		12
-#define MAX_AMMO_W3		8
-#define MAX_AMMO_W4		4
-#define NR_BULLETS		\
-	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
-
+/*---------------------------------------------------------------------------
+ * bullet handling
+ *---------------------------------------------------------------------------*/
 enum bullet_state {
 	BULLET_INACTIVE,
 	BULLET_ACTIVE,
@@ -673,6 +678,9 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 	return damage;
 }
 
+/*---------------------------------------------------------------------------
+ * enemy handling
+ *---------------------------------------------------------------------------*/
 enum enemy_types {
 	ENEMY_RAIDER,
 	ENEMY_MAX,
@@ -704,7 +712,7 @@ static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 };
 
 static const uint8_t enemy_damage[] = {
-	1, 1, 2, 3, 4, 5, 6, 0,
+	0, 1, 2, 3, 4, 5, 6, 0,
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
@@ -747,9 +755,6 @@ struct enemy {
 	uint8_t previous_state;
 	uint8_t sprite_offset;
 };
-
-#define MAX_ENEMIES			1
-#define ENEMIES_SPAWN_RATE		FPS * 3 /* every 3 seconds */
 
 static struct enemy enemies[MAX_ENEMIES];
 
@@ -832,6 +837,7 @@ static void update_enemies(void)
 			e->life -= damage; /* bullet damage */
 			if (e->life <= 0) {
 				enemy_set_state(e, ENEMY_DYING);
+				e->atime = FPS;
 				cs.score += enemy_score[e->type];
 			} else {
 				enemy_set_state(e, ENEMY_EFFECT);
@@ -843,13 +849,14 @@ static void update_enemies(void)
 			/* next movement */
 			if (e->mtime == 0) {
 				e->mtime = enemy_mtime[e->type];
+				e->x--;
 				if (e->damage) {
-					if (e->x != 16)
-						e->x--;
-					else
+					if (e->x == 16)
 						enemy_set_state(e, ENEMY_APPROACH_DOOR);
 				} else {
 					/* TODO peaceful enemies just pass by */
+					if (e->x == 16)
+						e->active = 0;
 				}
 			} else
 				e->mtime--;
@@ -897,7 +904,8 @@ static void update_enemies(void)
 				e->rtime--;
 			break;
 		case ENEMY_DYING:
-			e->active = 0;
+			if (e->atime == 0)
+				e->active = 0;
 			break;
 		}
 		/* next animation */
@@ -909,11 +917,28 @@ static void update_enemies(void)
 	}
 }
 
+/*---------------------------------------------------------------------------
+ * scene handling
+ *---------------------------------------------------------------------------*/
+static uint8_t lamp_frame = 0;
+
 static void update_scene(void)
 {
 	/* update scene animations */
+
+	/* update lamp animation */
+	if (timer_500ms_ticks & 1) {
+#ifdef HOST_TEST
+		lamp_frame = random() % 2;
+#else
+		lamp_frame = random(64) % 2;
+#endif
+	}
 }
 
+/*---------------------------------------------------------------------------
+ * misc control functions
+ *---------------------------------------------------------------------------*/
 static int check_game_over(void)
 {
 	if (cs.life <= 0)
@@ -936,15 +961,19 @@ static void draw_player(void)
 
 static void draw_enemies(void)
 {
-	uint8_t i, show = 1;
+	uint8_t i, show;
 	struct enemy *e = &enemies[0];
 
 	for (i = 0; i < MAX_ENEMIES; i++, e++) {
 		if (!e->active)
 			continue;
 		switch (e->state) {
+		case ENEMY_DYING:
 		case ENEMY_EFFECT:
 			show = e->atime & 1;
+			break;
+		default:
+			show = 1;
 			break;
 		}
 		if (show) {
@@ -960,7 +989,6 @@ static void draw_enemies(void)
 
 static void draw_scene(void)
 {
-	static uint8_t lamp_frame = 0;
 	int16_t life_level;
 
 	/* draw main scene */
@@ -997,14 +1025,8 @@ static void draw_scene(void)
 	}
 
 	/* draw weather animation */
+	/* TODO */
 
-	if (timer_500ms_ticks & 1) {
-#ifdef HOST_TEST
-		lamp_frame = random() % 2;
-#else
-		lamp_frame = random(64) % 2;
-#endif
-	}
 	/* draw lamp animation */
 	blit_image_frame(70,
 			 HEIGHT - img_height(scene_lamp_img),
@@ -1105,19 +1127,17 @@ run(void)
 	case GAME_STATE_RUN_GAME:
 		/* check for game over */
 		if (check_game_over()) {
-			init_timers();
 			game_state = GAME_STATE_OVER;
 			break;
 		}
 
-		/* check user inputs */
+		/* back to menu */
 		if (up() && a()) {
-			/* go to menu */
-			init_timers();
-			rstate = PROGRAM_MAIN_MENU;
+			game_state = GAME_STATE_CLEANUP;
 			break;
 		}
 
+		/* check user inputs */
 		if (up()) {
 			/* select weapon upwards */
 			if (ws.selected == 0)
@@ -1167,6 +1187,11 @@ run(void)
 		draw_score();
 		break;
 	case GAME_STATE_OVER:
+		/* TODO */
+		game_state = GAME_STATE_OVER;
+		break;
+	case GAME_STATE_CLEANUP:
+		init_timers();
 		rstate = PROGRAM_MAIN_MENU;
 		break;
 	}
@@ -1182,6 +1207,9 @@ help(void)
 /*---------------------------------------------------------------------------
  * loop
  *---------------------------------------------------------------------------*/
+/* state of the program */
+static uint8_t main_state = PROGRAM_MAIN_MENU;
+
 #ifdef __cplusplus
 extern "C"
 {

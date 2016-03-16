@@ -462,7 +462,7 @@ static struct character_state {
 	uint8_t frame:2; /* current frame of sprite */
 	uint8_t state:2; /* current player state */
 	uint8_t previous_state:2; /* previous player state */
-	uint32_t score; /* current score */
+	int32_t score; /* current score */
 } cs;
 
 enum player_states {
@@ -698,6 +698,8 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
  *---------------------------------------------------------------------------*/
 enum enemy_types {
 	ENEMY_RAIDER,
+	ENEMY_PEACEFUL,
+	ENEMY_GRANDMA = ENEMY_PEACEFUL,
 	ENEMY_MAX,
 };
 
@@ -711,6 +713,7 @@ enum enemy_state {
 	ENEMY_ATTACKING,
 	ENEMY_RESTING,
 	ENEMY_DYING,
+	ENEMY_SWEARING,
 	ENEMY_MAX_STATE,
 };
 
@@ -724,34 +727,40 @@ static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 8,
 	20,
 	 0,
+	 4,
 };
 
-static const uint8_t enemy_damage[] = {
-	1, 1, 2, 3, 4, 5, 6, 0,
+static const uint8_t enemy_damage[ENEMY_MAX] = {
+	1, 0,
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
-	16,
+	16, 32
 };
 
 static const int8_t enemy_mtime[ENEMY_MAX] = {
 	FPS / 20,
+	FPS / 5,
 };
 
 static const int8_t enemy_rtime[ENEMY_MAX] = {
 	FPS,
+	FPS * 2,
 };
 
 static const int8_t enemy_atime[ENEMY_MAX] = {
+	FPS / 10,
 	FPS / 10,
 };
 
 static const int8_t enemy_score[ENEMY_MAX] = {
 	10,
+	-100,
 };
 
 static const uint8_t *enemy_sprites[ENEMY_MAX] = {
-	 enemy_raider_img,
+	enemy_raider_img,
+	enemy_grandma_img,
 };
 
 struct enemy {
@@ -784,11 +793,9 @@ static struct door door;
 
 static void enemy_set_state(struct enemy *e, uint8_t state)
 {
-	if (state != ENEMY_EFFECT && e->state != ENEMY_EFFECT) {
-		e->previous_state = e->state;
-		e->sprite_offset = enemy_sprite_offsets[state];
-		e->frame = 0;
-	}
+	e->previous_state = e->state;
+	e->sprite_offset = enemy_sprite_offsets[state];
+	e->frame = 0;
 	e->state = state;
 }
 
@@ -802,7 +809,7 @@ static void spawn_new_enemies(void)
 		if (e->active)
 			continue;
 		e->active = 1;
-		e->type = ENEMY_RAIDER;
+		e->type = random8(ENEMY_MAX); //ENEMY_RAIDER;
 		height = enemy_sprites[e->type][1];
 		e->lane = random8(2);
 		e->y = lane_y[e->lane] - height;
@@ -859,10 +866,16 @@ static void update_enemies(void)
 				}
 				e->atime = FPS;
 				cs.score += enemy_score[e->type];
+				if (cs.score < 0)
+					cs.score = 0;
 				enemy_set_state(e, ENEMY_DYING);
 			} else {
-				enemy_set_state(e, ENEMY_EFFECT);
-				e->atime = FPS;
+				if (e->state != ENEMY_EFFECT && e->state != ENEMY_SWEARING) {
+					if (e->damage)
+						enemy_set_state(e, ENEMY_EFFECT);
+					else
+						enemy_set_state(e, ENEMY_SWEARING);
+				}
 			}
 		}
 		switch (e->state) {
@@ -936,6 +949,7 @@ static void update_enemies(void)
 				enemy_set_state(e, ENEMY_RESTING);
 			}
 			break;
+		case ENEMY_SWEARING:
 		case ENEMY_RESTING:
 			if (e->rtime == 0) {
 				e->rtime = enemy_rtime[e->type];

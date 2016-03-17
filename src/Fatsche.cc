@@ -566,7 +566,7 @@ struct bullet {
 	uint8_t state:2;
 	uint8_t weapon:2;
 	uint8_t frame:2;
-	uint8_t lane:1;
+	uint8_t lane:2;
 	uint8_t atime; /* nr of frames it take for the next animation frame */
 	uint8_t etime; /* nr of frames a weapon has effect on the ground */
 	uint8_t mtime; /* nr of frames it takes to move */
@@ -594,11 +594,11 @@ static const uint8_t max_ammo[NR_WEAPONS] = {
 	MAX_AMMO_W4,
 };
 
-#define UPPER_LANE			0
-#define LOWER_LANE			1
-#define DOOR_LANE			2
+#define DOOR_LANE			0
+#define UPPER_LANE			1
+#define LOWER_LANE			2
 
-static const uint8_t lane_y[3] = {56, 60, 52};
+static const uint8_t lane_y[3] = {52, 56, 60};
 
 static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 {
@@ -697,7 +697,9 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
  * enemy handling
  *---------------------------------------------------------------------------*/
 enum enemy_types {
+	/* vicious enemies */
 	ENEMY_RAIDER,
+	/* peaceful enemies */
 	ENEMY_PEACEFUL,
 	ENEMY_GRANDMA = ENEMY_PEACEFUL,
 	ENEMY_MAX,
@@ -708,6 +710,7 @@ enum enemy_state {
 	ENEMY_WALKING_LEFT,
 	ENEMY_WALKING_RIGHT,
 	ENEMY_EFFECT,
+	ENEMY_CHANGE_LANE,
 	ENEMY_MOVE_TO_UPPER_LANE,
 	ENEMY_MOVE_TO_LOWER_LANE,
 	ENEMY_ATTACKING,
@@ -721,6 +724,7 @@ static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0,
 	 0,
 	 4,
+	 0,
 	 0,
 	12,
 	16,
@@ -793,7 +797,8 @@ static struct door door;
 
 static void enemy_set_state(struct enemy *e, uint8_t state)
 {
-	e->previous_state = e->state;
+	if (e->state != ENEMY_CHANGE_LANE)
+		e->previous_state = e->state;
 	e->sprite_offset = enemy_sprite_offsets[state];
 	e->frame = 0;
 	e->state = state;
@@ -809,9 +814,9 @@ static void spawn_new_enemies(void)
 		if (e->active)
 			continue;
 		e->active = 1;
-		e->type = random8(ENEMY_MAX); //ENEMY_RAIDER;
+		e->type = random8(ENEMY_MAX);
 		height = enemy_sprites[e->type][1];
-		e->lane = random8(2);
+		e->lane = 1 + random8(2);
 		e->y = lane_y[e->lane] - height;
 		e->x = 127;
 		e->frame = 0;
@@ -897,7 +902,7 @@ static void update_enemies(void)
 			if (door.under_attack && door.attacker != e) {
 				/* door is already under attack, take a walk */
 				e->dx = e->x + random8(WIDTH - e->x - width);
-				e->dlane = random8(2);
+				e->dlane = 1 + random8(2);
 				enemy_set_state(e, ENEMY_WALKING_RIGHT);
 				break;
 			}
@@ -905,7 +910,7 @@ static void update_enemies(void)
 			door.attacker = e;
 			e->dlane = DOOR_LANE;
 			if (e->lane != e->dlane)
-				enemy_set_state(e, ENEMY_MOVE_TO_UPPER_LANE);
+				enemy_set_state(e, ENEMY_CHANGE_LANE);
 			else
 				enemy_set_state(e, ENEMY_ATTACKING);
 			break;
@@ -915,22 +920,24 @@ static void update_enemies(void)
 
 			if (e->x == e->dx) {
 				/* randomly change lane */
-				if (e->lane != e->dlane) {
-					switch(e->dlane) {
-					case UPPER_LANE:
-						enemy_set_state(e, ENEMY_MOVE_TO_UPPER_LANE);
-						break;
-					case LOWER_LANE:
-						enemy_set_state(e, ENEMY_MOVE_TO_LOWER_LANE);
-						break;
-					}
-				} else
+				if (e->lane != e->dlane)
+					enemy_set_state(e, ENEMY_CHANGE_LANE);
+				else
 					enemy_set_state(e, ENEMY_WALKING_LEFT);
 			} else
 				e->x++;
 			break;
 		case ENEMY_EFFECT:
 			if (e->atime == 0)
+				enemy_set_state(e, e->previous_state);
+			break;
+		case ENEMY_CHANGE_LANE:
+			if (e->lane != e->dlane) {
+				if (e->lane > e->dlane)
+					enemy_set_state(e, ENEMY_MOVE_TO_UPPER_LANE);
+				else
+					enemy_set_state(e, ENEMY_MOVE_TO_LOWER_LANE);
+			} else
 				enemy_set_state(e, e->previous_state);
 			break;
 		case ENEMY_MOVE_TO_UPPER_LANE:
@@ -969,11 +976,10 @@ static void update_enemies(void)
 		} else
 			e->atime--;
 		/* next movement */
-		if (e->mtime == 0) {
+		if (e->mtime == 0)
 			e->mtime = enemy_mtime[e->type];
-		} else
+		else
 			e->mtime--;
-
 	}
 }
 

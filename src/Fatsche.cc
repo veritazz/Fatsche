@@ -673,7 +673,7 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 		if (bs->state != BULLET_ACTIVE)
 			continue;
 		if (bs->lane != lane)
-			if (bs->lane != UPPER_LANE && lane == DOOR_LANE)
+			if (bs->lane != UPPER_LANE || lane != DOOR_LANE)
 				continue;
 		hit = 0;
 		/* check if it is a hit */

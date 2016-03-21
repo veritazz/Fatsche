@@ -721,17 +721,17 @@ enum enemy_state {
 };
 
 static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
-	 0,
-	 0,
-	 4,
-	 0,
-	 0,
-	12,
-	16,
-	 8,
-	20,
-	 0,
-	 4,
+	 0, /* not used, approach door */
+	 0, /* walking left */
+	 4, /* walking right */
+	 0, /* TODO, effect */
+	 0, /* not used, change lane */
+	 0, /* not used, move to upper lane */
+	 0, /* not used, move to lower lane */
+	 8, /* attacking */
+	20, /* resting */
+	 0, /* not used, dying */
+	 4, /* swearing, used for peaceful enemies */
 };
 
 static const uint8_t enemy_damage[ENEMY_MAX] = {
@@ -799,7 +799,17 @@ static void enemy_set_state(struct enemy *e, uint8_t state)
 {
 	if (e->state != ENEMY_CHANGE_LANE)
 		e->previous_state = e->state;
-	e->sprite_offset = enemy_sprite_offsets[state];
+	switch (e->state) {
+	case ENEMY_CHANGE_LANE:
+		e->sprite_offset = enemy_sprite_offsets[e->previous_state];
+		break;
+	case ENEMY_MOVE_TO_UPPER_LANE:
+	case ENEMY_MOVE_TO_LOWER_LANE:
+		break;
+	default:
+		e->sprite_offset = enemy_sprite_offsets[state];
+		break;
+	}
 	e->frame = 0;
 	e->state = state;
 }
@@ -814,7 +824,7 @@ static void spawn_new_enemies(void)
 		if (e->active)
 			continue;
 		e->active = 1;
-		e->type = random8(ENEMY_MAX);
+		e->type = ENEMY_RAIDER; //random8(ENEMY_MAX);
 		height = enemy_sprites[e->type][1];
 		e->lane = 1 + random8(2);
 		e->y = lane_y[e->lane] - height;
@@ -836,11 +846,19 @@ static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 {
 	if (e->y == y) {
 		e->lane = lane;
+		e->dx = e->x;
 		return;
 	}
 
 	if (e->mtime != 0)
 		return;
+
+	if (e->previous_state == ENEMY_WALKING_RIGHT)
+		e->x++;
+
+	if (e->previous_state == ENEMY_WALKING_LEFT ||
+	    e->previous_state == ENEMY_APPROACH_DOOR)
+		e->x--;
 
 	if (e->y > y)
 		e->y--;
@@ -888,21 +906,21 @@ static void update_enemies(void)
 			if (e->mtime)
 				break;
 
+			e->x--;
 			if (e->damage) {
-				if (e->x == 24)
+				if (e->x == (24 + lane_y[e->lane] - lane_y[DOOR_LANE]))
 					enemy_set_state(e, ENEMY_APPROACH_DOOR);
 			} else {
 				/* TODO peaceful enemies just pass by */
 				if (e->x == 16)
 					e->active = 0;
 			}
-			e->x--;
 			break;
 		case ENEMY_APPROACH_DOOR:
 			if (door.under_attack && door.attacker != e) {
 				/* door is already under attack, take a walk */
-				e->dx = e->x + random8(WIDTH - e->x - width);
 				e->dlane = 1 + random8(2);
+				e->dx = e->x + random8(WIDTH - e->x - width - abs(lane_y[e->lane] - lane_y[e->dlane]));
 				enemy_set_state(e, ENEMY_WALKING_RIGHT);
 				break;
 			}

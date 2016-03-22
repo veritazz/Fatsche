@@ -13,9 +13,10 @@ extern const uint8_t player_all_frames_img[386];
 extern const uint8_t enemy1_all_frames_img[2050];
 extern const uint8_t enemy_raider_img[450];
 extern const uint8_t enemy_grandma_img[226];
+extern const uint8_t enemy_boss_img[1538];
 extern const uint8_t scene_lamp_img[44];
 extern const uint8_t numbers_3x5_img[32];
 
-/* total size 5374 bytes */
+/* total size 6912 bytes */
 
 #endif

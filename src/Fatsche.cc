@@ -943,7 +943,7 @@ static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 		return;
 	}
 
-	if (e->mtime != 0)
+	if (e->mtime)
 		return;
 
 	if (e->dx > e->x)
@@ -1097,9 +1097,12 @@ static void update_enemies(void)
 		} else
 			e->atime--;
 		/* next movement */
-		if (e->mtime == 0)
-			e->mtime = enemy_mtime[e->type];
-		else
+		if (e->mtime == 0) {
+			if (e->state < ENEMY_DYING)
+				e->mtime = enemy_mtime[e->type];
+			else
+				e->mtime = 0;
+		} else
 			e->mtime--;
 	}
 }

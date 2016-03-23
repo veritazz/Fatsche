@@ -29,6 +29,7 @@ SimpleButtons buttons(arduboy);
 #define MAX_AMMO_W4                 4
 #define NR_BULLETS                  \
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
+#define KILLS_TILL_BOSS             2
 
 /*---------------------------------------------------------------------------
  * program states
@@ -842,8 +843,8 @@ struct enemy {
 
 struct door {
 	uint8_t under_attack:1;
-	uint8_t boss:1;
 	struct enemy *attacker;
+	uint8_t boss_countdown;
 };
 
 static struct enemy enemies[MAX_ENEMIES];
@@ -853,12 +854,15 @@ static uint8_t enemy_random_type(void)
 {
 	uint8_t r = random8(100);
 
+	if (!door.boss_countdown) {
+		door.boss_countdown = KILLS_TILL_BOSS;
+		return ENEMY_BOSS1;
+	}
+
 	if (r < 9)
 		return ENEMY_GRANDMA;
-	else if (r < 89)
-		return ENEMY_RAIDER;
 	else
-		return ENEMY_BOSS1;
+		return ENEMY_RAIDER;
 }
 
 static void enemy_push_state(struct enemy *e)
@@ -933,13 +937,13 @@ static void spawn_new_enemies(void)
 		break;
 	}
 	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
+
 }
 
 static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 {
 	if (e->y == y) {
 		e->lane = lane;
-		e->dx = e->x;
 		return;
 	}
 
@@ -958,11 +962,18 @@ static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 		e->y++;
 }
 
+static void enemy_prepare_direction_change(struct enemy *e, uint8_t width)
+{
+	e->dlane = 1 + random8(2);
+	e->dx = e->x + random8(WIDTH - e->x - width - abs(lane_y[e->lane] - lane_y[e->dlane]));
+}
+
 static void update_enemies(void)
 {
 	uint8_t damage = 0;
 	uint8_t i, width, height;
 	struct enemy *e = &enemies[0];
+	struct enemy *a;
 
 	/* update and spawn enemies */
 	for (i = 0; i < MAX_ENEMIES; i++, e++) {
@@ -1011,12 +1022,18 @@ static void update_enemies(void)
 			e->x--;
 			break;
 		case ENEMY_APPROACH_DOOR:
-			if (door.under_attack && door.attacker != e) {
-				/* door is already under attack, take a walk */
-				e->dlane = 1 + random8(2);
-				e->dx = e->x + random8(WIDTH - e->x - width - abs(lane_y[e->lane] - lane_y[e->dlane]));
-				enemy_set_state(e, ENEMY_WALKING_RIGHT, 1);
-				break;
+			a = door.attacker;
+			if (door.under_attack && a != e) {
+				if (e->type >= ENEMY_BOSSES && e->type < ENEMY_PEACEFUL) {
+					enemy_prepare_direction_change(a, width);
+					enemy_set_state(a, ENEMY_WALKING_RIGHT, 1);
+					enemy_set_state(a, ENEMY_CHANGE_LANE, 1);
+				} else {
+					/* door is already under attack, take a walk */
+					enemy_prepare_direction_change(e, width);
+					enemy_set_state(e, ENEMY_WALKING_RIGHT, 1);
+					break;
+				}
 			}
 			door.under_attack = 1;
 			door.attacker = e;
@@ -1084,9 +1101,11 @@ static void update_enemies(void)
 		case ENEMY_DEAD:
 			if (e->mtime)
 				break;
-			if (e->y == 0)
+			if (e->y == 0) {
 				e->active = 0;
-			else
+				if (e->type  < ENEMY_BOSSES)
+					door.boss_countdown--;
+			} else
 				e->y--;
 			break;
 		}
@@ -1325,6 +1344,9 @@ run(void)
 		timer_500ms_ticks = 0;
 		setup_timer(TIMER_500MS, timer_500ms_counter);
 		start_timer(TIMER_500MS, FPS / 2);
+
+		memset(&door, 0, sizeof(door));
+		door.boss_countdown = KILLS_TILL_BOSS;
 		break;
 	case GAME_STATE_RUN_GAME:
 		/* check for game over */

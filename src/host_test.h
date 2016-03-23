@@ -38,6 +38,9 @@ extern void blit_image_frame(int16_t x,
 			     const uint8_t *mask,
 			     uint8_t nr,
 			     uint8_t flags);
+
+extern void draw_hline(uint8_t x, uint8_t y, uint8_t w);
+extern void draw_vline(uint8_t x, uint8_t y, uint8_t h);
 extern void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 extern void draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 extern void clear_screen(void);

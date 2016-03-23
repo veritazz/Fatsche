@@ -94,6 +94,18 @@ draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
 	arduboy.fillRect(x, y, w, h, WHITE);
 }
+
+static void
+draw_hline(uint8_t x, uint8_t y, uint8_t w)
+{
+	arduboy.drawFastHLine(x, y, w, WHITE);
+}
+
+static void
+draw_vline(uint8_t x, uint8_t y, uint8_t h)
+{
+	arduboy.drawFastVLine(x, y, h, WHITE);
+}
 #endif
 
 /*---------------------------------------------------------------------------

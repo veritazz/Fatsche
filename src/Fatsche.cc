@@ -731,8 +731,9 @@ enum enemy_state {
 	ENEMY_MOVE_TO_LOWER_LANE,
 	ENEMY_ATTACKING,
 	ENEMY_RESTING,
-	ENEMY_DYING,
 	ENEMY_SWEARING,
+	ENEMY_DYING,
+	ENEMY_DEAD,
 	ENEMY_MAX_STATE,
 };
 
@@ -746,8 +747,9 @@ static const uint8_t boss_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* not used, move to lower lane */
 	4, /* attacking */
 	8, /* resting */
-	0, /* not used, dying */
 	0, /* swearing, used for peaceful enemies */
+	0, /* not used, dying */
+	0, /* not used, dead */
 };
 
 static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
@@ -760,24 +762,25 @@ static const uint8_t enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0, /* not used, move to lower lane */
 	 8, /* attacking */
 	12, /* resting */
+	 0, /* swearing, used for peaceful enemies */
 	 0, /* not used, dying */
-	 4, /* swearing, used for peaceful enemies */
+	 0, /* not used, dead */
 };
 
 static const uint8_t peaceful_sprite_offsets[ENEMY_MAX_STATE] = {
-	 0, /* not used, approach door */
-	 0, /* walking left */
-	 0, /* walking right */
-	 0, /* TODO, effect */
-	 0, /* not used, change lane */
-	 0, /* not used, move to upper lane */
-	 0, /* not used, move to lower lane */
-	 0, /* attacking */
-	 0, /* resting */
-	 0, /* not used, dying */
-	 4, /* swearing, used for peaceful enemies */
+	0, /* not used, approach door */
+	0, /* walking left */
+	0, /* walking right */
+	0, /* TODO, effect */
+	0, /* not used, change lane */
+	0, /* not used, move to upper lane */
+	0, /* not used, move to lower lane */
+	0, /* attacking */
+	0, /* resting */
+	4, /* swearing, used for peaceful enemies */
+	0, /* not used, dying */
+	0, /* not used, dead */
 };
-
 
 static const uint8_t enemy_damage[ENEMY_MAX] = {
 	1, 10, 0,
@@ -872,16 +875,6 @@ static uint8_t enemy_pop_state(struct enemy *e)
 	return e->previous_state[e->pindex];
 }
 
-static uint8_t enemy_peek_state(struct enemy *e)
-{
-	uint8_t pindex = e->pindex;
-
-	if (pindex == 0)
-		pindex = 4;
-	pindex--;
-	return e->previous_state[pindex];
-}
-
 static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 {
 	const uint8_t *so;
@@ -944,7 +937,6 @@ static void spawn_new_enemies(void)
 
 static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 {
-	uint8_t previous_state = enemy_peek_state(e);
 	if (e->y == y) {
 		e->lane = lane;
 		e->dx = e->x;
@@ -968,7 +960,7 @@ static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 
 static void update_enemies(void)
 {
-	uint8_t damage;
+	uint8_t damage = 0;
 	uint8_t i, width, height;
 	struct enemy *e = &enemies[0];
 
@@ -979,8 +971,9 @@ static void update_enemies(void)
 		width = img_width(enemy_sprites[e->type]);
 		height = img_height(enemy_sprites[e->type]);
 		/* check if hit by bullet */
-		damage = get_bullet_damage(e->lane, e->x, e->y, width, height);
-		if (damage && e->state != ENEMY_DYING) {
+		if (e->state < ENEMY_DYING)
+			damage = get_bullet_damage(e->lane, e->x, e->y, width, height);
+		if (damage) {
 			e->life -= damage; /* bullet damage */
 			if (e->life <= 0) {
 				if (door.attacker == e) {
@@ -1086,7 +1079,15 @@ static void update_enemies(void)
 			break;
 		case ENEMY_DYING:
 			if (e->atime == 0)
+				enemy_set_state(e, ENEMY_DEAD, 0);
+			break;
+		case ENEMY_DEAD:
+			if (e->mtime)
+				break;
+			if (e->y == 0)
 				e->active = 0;
+			else
+				e->y--;
 			break;
 		}
 		/* next animation */
@@ -1130,6 +1131,39 @@ static int check_game_over(void)
 /*---------------------------------------------------------------------------
  * rendering functions
  *---------------------------------------------------------------------------*/
+static void draw_digit(uint8_t x, uint8_t y, int8_t number)
+{
+	if (number < 0 || number > 9)
+		return;
+	blit_image_frame(x, y, numbers_3x5_img, NULL, number, __flag_none);
+}
+
+static void draw_number(uint8_t x, uint8_t y, int32_t n, uint32_t divider, uint8_t flags)
+{
+	uint8_t digit;
+	uint8_t fill = flags & 1;
+	uint8_t sign = flags & 2;
+	uint32_t number = abs(n);
+
+	while (divider) {
+		digit = number / divider;
+		if (digit || fill) {
+			if (sign) {
+				if (n > 0)
+					draw_vline(x + 1, y + 1, 3);
+				draw_hline(x, y + 2, 3);
+				sign = 0;
+				x += 4;
+			}
+			draw_digit(x, y, digit);
+			fill = 1;
+		}
+		number %= divider;
+		divider /= 10;
+		x += 4;
+	}
+}
+
 static void draw_player(void)
 {
 	blit_image_frame(cs.x,
@@ -1148,10 +1182,15 @@ static void draw_enemies(void)
 	for (i = 0; i < MAX_ENEMIES; i++, e++) {
 		if (!e->active)
 			continue;
+		show = 0;
 		switch (e->state) {
 		case ENEMY_DYING:
 		case ENEMY_EFFECT:
 			show = e->atime & 1;
+			break;
+		case ENEMY_DEAD:
+			/* draw score */
+			draw_number(e->x, e->y, enemy_score[e->type], 100, 2);
 			break;
 		default:
 			show = 1;
@@ -1248,30 +1287,9 @@ static void draw_bullets(void)
 	}
 }
 
-static void draw_number(uint8_t x, uint8_t y, int8_t number)
-{
-	if (number < 0 || number > 9)
-		return;
-	blit_image_frame(x, y, numbers_3x5_img, NULL, number, __flag_none);
-}
-
 static void draw_score(void)
 {
-	uint32_t score = cs.score;
-
-	draw_number(100, 59, score / 1000000);
-	score %= 1000000;
-	draw_number(104, 59, score / 100000);
-	score %= 100000;
-	draw_number(108, 59, score / 10000);
-	score %= 10000;
-	draw_number(112, 59, score / 1000);
-	score %= 1000;
-	draw_number(116, 59, score / 100);
-	score %= 100;
-	draw_number(120, 59, score / 10);
-	score %= 10;
-	draw_number(124, 59, score);
+	draw_number(100, 59, cs.score, 1000000, 1);
 }
 
 static int

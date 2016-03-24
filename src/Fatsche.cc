@@ -31,6 +31,8 @@ SimpleButtons buttons(arduboy);
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
 #define KILLS_TILL_BOSS             2
 
+
+#define BULLET_FRAME_TIME           FPS / 10
 /*---------------------------------------------------------------------------
  * program states
  *---------------------------------------------------------------------------*/
@@ -582,7 +584,6 @@ struct bullet {
 	uint8_t lane:2;
 	uint8_t atime; /* nr of frames it take for the next animation frame */
 	uint8_t etime; /* nr of frames a weapon has effect on the ground */
-	uint8_t mtime; /* nr of frames it takes to move */
 };
 
 static struct weapon_states {
@@ -593,12 +594,8 @@ static struct weapon_states {
 
 /* damage per bullet */
 static const uint8_t bullet_damage[NR_WEAPONS] = {1, 2, 3, 4};
-/* nr of frames until next bullet animation */
-static const uint8_t atime[NR_WEAPONS] = {FPS, FPS, FPS, FPS};
 /* nr of frames weapon is effective on ground */
-static const uint8_t etime[NR_WEAPONS] = {FPS * 2, FPS * 2, FPS * 2, FPS * 2};
-/* nr of frames until next bullet movement */
-static const uint8_t mtime[NR_WEAPONS] = {FPS / 20, FPS / 20, FPS / 20, FPS / 20};
+static const uint8_t etime[NR_WEAPONS] = {FPS / 2, FPS / 2, FPS, FPS * 2};
 /* maximum number of ammo per weapon */
 static const uint8_t max_ammo[NR_WEAPONS] = {
 	MAX_AMMO_W1,
@@ -631,9 +628,8 @@ static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 		bs->x = x;
 		bs->ys = 5;
 		bs->lane = lane;
-		bs->atime = atime[weapon];
+		bs->atime = BULLET_FRAME_TIME;
 		bs->etime = etime[weapon];
-		bs->mtime = mtime[weapon];
 		bs->frame = 0;
 		ws.ammo[weapon]--;
 		break;
@@ -650,7 +646,7 @@ static void update_bullets(void)
 		if (bs->state == BULLET_INACTIVE)
 			continue;
 
-		if (bs->state == BULLET_EFFECT || bs->state == BULLET_SPLASH) {
+		if (bs->state >= BULLET_EFFECT) {
 			if (bs->etime == 0) {
 				bs->state = BULLET_INACTIVE;
 				ws.ammo[bs->weapon]++;
@@ -658,19 +654,16 @@ static void update_bullets(void)
 				bs->etime--;
 		} else {
 			/* next movement */
-			if (bs->mtime == 0) {
-				bs->mtime = mtime[bs->weapon];
-				bs->ys++;
-				if (bs->ys == lane_y[bs->lane]) {
-					bs->frame = 0;
-					bs->state = BULLET_EFFECT;
-				}
-			} else
-				bs->mtime--;
+			bs->ys++;
+			/* TODO substract height */
+			if (bs->ys == lane_y[bs->lane]) {
+				bs->frame = 0;
+				bs->state = BULLET_EFFECT;
+			}
 		}
 		/* next animation */
 		if (bs->atime == 0) {
-			bs->atime = atime[bs->weapon];
+			bs->atime = BULLET_FRAME_TIME;
 			bs->frame++;
 		} else
 			bs->atime--;

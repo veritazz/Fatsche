@@ -608,7 +608,7 @@ static const uint8_t max_ammo[NR_WEAPONS] = {
 #define UPPER_LANE			1
 #define LOWER_LANE			2
 
-static const uint8_t lane_y[3] = {52, 56, 60};
+static const uint8_t lane_y[3] = {52, 56, 62};
 
 static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 {
@@ -639,13 +639,14 @@ static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
 
 static void update_bullets(void)
 {
-	uint8_t b;
+	uint8_t b, height;
 	struct bullet *bs = &ws.bs[0];
 
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
 		if (bs->state == BULLET_INACTIVE)
 			continue;
 
+		height = img_height(water_bomb_air_img);
 		if (bs->state >= BULLET_EFFECT) {
 			if (bs->etime == 0) {
 				bs->state = BULLET_INACTIVE;
@@ -654,12 +655,11 @@ static void update_bullets(void)
 				bs->etime--;
 		} else {
 			/* next movement */
-			bs->ys++;
-			/* TODO substract height */
-			if (bs->ys == lane_y[bs->lane]) {
+			if (bs->ys == lane_y[bs->lane] - height) {
 				bs->frame = 0;
 				bs->state = BULLET_EFFECT;
 			}
+			bs->ys++;
 		}
 		/* next animation */
 		if (bs->atime == 0) {

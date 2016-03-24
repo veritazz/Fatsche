@@ -958,7 +958,7 @@ static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 static void enemy_prepare_direction_change(struct enemy *e, uint8_t width)
 {
 	e->dlane = 1 + random8(2);
-	e->dx = e->x + random8(WIDTH - e->x - width - abs(lane_y[e->lane] - lane_y[e->dlane]));
+	e->dx = 1 + e->x + random8(WIDTH - e->x - width - abs(lane_y[e->lane] - lane_y[e->dlane]));
 }
 
 static void update_enemies(void)

@@ -528,7 +528,7 @@ static void update_player(int8_t dx, uint8_t throws)
 	/* update position */
 	if (dx < 0) {
 		player_set_state(PLAYER_L_MOVE);
-		if (cs.x > 20)
+		if (cs.x > 0)
 			cs.x--;
 	}
 	if (dx > 0) {
@@ -816,7 +816,7 @@ static const uint8_t *enemy_sprites[ENEMY_MAX] = {
 
 struct enemy {
 	int8_t life;
-	uint8_t x;
+	int8_t x;
 	uint8_t dx;
 	uint8_t y;
 	uint8_t type;
@@ -1005,11 +1005,11 @@ static void update_enemies(void)
 				break;
 
 			if (e->damage) {
-				if (e->x == (24 + lane_y[e->lane] - lane_y[DOOR_LANE]))
+				if (e->x == (6 + lane_y[e->lane] - lane_y[DOOR_LANE]))
 					enemy_set_state(e, ENEMY_APPROACH_DOOR, 1);
 			} else {
 				/* TODO peaceful enemies just pass by */
-				if (e->x == 16)
+				if (e->x == -16)
 					e->active = 0;
 			}
 			e->x--;

@@ -1234,20 +1234,6 @@ static void draw_scene(void)
 	/* draw main scene */
 	blit_image(0, 0, game_background_img, NULL, __flag_none);
 
-	/* draw selected weapon */
-	draw_rect(0, 14 * ws.selected, 14, 14);
-
-	/* draw current ammo level */
-	for (uint8_t i = 0; i < NR_WEAPONS; i++) {
-		uint8_t level = (ws.ammo[i] * 4 + max_ammo[i] - 1) / max_ammo[i];
-		while (level--) {
-			draw_filled_rect(10,
-					 12 + (14 * i) - level * 2,
-					 2,
-					 1);
-		}
-	}
-
 	/* draw current life */
 	life_level = (cs.life * 4 + PLAYER_MAX_LIFE - 1) / PLAYER_MAX_LIFE;
 	if (life_level > 2) {

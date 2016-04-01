@@ -1,7 +1,9 @@
 - remove weapons bar on the left and display selected weapon as small icon, introduce animation on weapon selection
-- add boss handling
+- add boss handling [done]
 - add weapon effect handling
-- display the score as flying number whenever an enemy dies
+- display the score as flying number whenever an enemy dies [done]
 - add more enemies
 - add weather
 - add more scene animations
+- title screen
+- add powerups

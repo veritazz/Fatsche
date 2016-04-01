@@ -489,7 +489,6 @@ enum player_states {
 	PLAYER_L_MOVE,
 	PLAYER_R_MOVE,
 	PLAYER_RESTS,
-	PLAYER_THROWS,
 	PLAYER_MAX_STATES,
 };
 
@@ -498,19 +497,17 @@ static const uint8_t player_timings[PLAYER_MAX_STATES] = {
 	FPS / 5, /* moving left */
 	FPS / 5, /* moving right */
 	FPS / 1, /* resting */
-	FPS / 2, /* throwing */
 };
 /* offsets in number of frames per state */
 static const uint8_t player_frame_offsets[PLAYER_MAX_STATES] = {
 	  0, /* moving left */
 	  4, /* moving right */
 	  8, /* resting */
-	 12, /* throwing */
 };
 
 static void player_set_state(uint8_t new_state)
 {
-	if (new_state != cs.state || new_state == PLAYER_THROWS) {
+	if (new_state != cs.state) {
 		cs.frame = 0;
 		cs.atime = player_timings[new_state];
 	}
@@ -518,7 +515,7 @@ static void player_set_state(uint8_t new_state)
 	if (new_state != PLAYER_RESTS)
 		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 
-	if (cs.state != PLAYER_THROWS && cs.state != PLAYER_RESTS)
+	if (cs.state != PLAYER_RESTS)
 		cs.previous_state = cs.state;
 
 	cs.state = new_state;
@@ -544,13 +541,7 @@ static void update_player(int8_t dx, uint8_t throws)
 
 	/* XXX might introduce timeout to reduce fire rate */
 	if (throws)
-		player_set_state(PLAYER_THROWS);
-
-	/* return to previous state after throwing */
-	if (!throws &&
-	    cs.state == PLAYER_THROWS && cs.atime == 0) {
 		player_set_state(cs.previous_state);
-	}
 
 	/* update frames */
 	if (cs.atime == 0) {

@@ -109,6 +109,11 @@ draw_vline(uint8_t x, uint8_t y, uint8_t h)
 {
 	arduboy.drawFastVLine(x, y, h, WHITE);
 }
+static void
+draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
+{
+	arduboy.drawLine(x0, y0, x1, y1, WHITE);
+}
 #endif
 
 /*---------------------------------------------------------------------------

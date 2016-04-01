@@ -41,6 +41,7 @@ extern void blit_image_frame(int16_t x,
 
 extern void draw_hline(uint8_t x, uint8_t y, uint8_t w);
 extern void draw_vline(uint8_t x, uint8_t y, uint8_t h);
+extern void draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1);
 extern void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 extern void draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 extern void clear_screen(void);

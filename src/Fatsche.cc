@@ -1265,7 +1265,7 @@ static void draw_bullets(void)
 		case BULLET_SPLASH:
 			blit_image_frame(bs->x,
 					 bs->ys,
-					 water_bomb_impact_img,
+					 bomb_splash_img,
 					 NULL,
 					 bs->frame,
 					 __flag_none);

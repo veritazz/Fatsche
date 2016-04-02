@@ -149,9 +149,14 @@ blit_image(int16_t px, int16_t py, const uint8_t *img, const uint8_t *mask,
 {
 	uint8_t w, h;
 	const uint8_t *p = img + 2;
+	const uint8_t *p2 = mask + 2;
 
 	w = img[0];
 	h = img[1];
+
+	if (mask)
+		drawBitmap(px, py, p2, w, h, BLACK);
+
 	drawBitmap(px, py, p, w, h, WHITE);
 
 	update = 1;
@@ -162,12 +167,22 @@ blit_image_frame(int16_t px, int16_t py, const uint8_t *img,
 		 const uint8_t *mask, uint8_t nr, uint8_t flags)
 {
 	uint8_t w, h;
+	uint16_t offset;
 	const uint8_t *p;
+	const uint8_t *p2;
+
 
 	w = img[0];
 	h = img[1];
-	p = &img[(w * ((h + 7) / 8)) * nr];
-	drawBitmap(px, py, p + 2, w, h, WHITE);
+	offset = (w * ((h + 7) / 8)) * nr + 2;
+	p = &img[offset];
+
+	if (mask) {
+		p2 = &mask[offset];
+		drawBitmap(px, py, p2, w, h, BLACK);
+	}
+
+	drawBitmap(px, py, p, w, h, WHITE);
 	update = 1;
 }
 

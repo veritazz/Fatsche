@@ -61,6 +61,14 @@ static void
 blit_image(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
 	   uint8_t flags)
 {
+	if (mask)
+		arduboy.drawBitmap(x,
+				   y,
+				   mask + 2,
+				   img_width(mask),
+				   img_height(mask),
+				   BLACK);
+
 	arduboy.drawBitmap(x,
 			   y,
 			   img + 2,
@@ -73,14 +81,24 @@ static void
 blit_image_frame(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
 		 uint8_t nr, uint8_t flags)
 {
+	uint16_t offset;
 	uint8_t w, h;
 
 	w = img_width(img);
 	h = img_height(img);
+	offset = (w * ((h + 7) / 8) * nr) + 2;
+
+	if (mask)
+		arduboy.drawBitmap(x,
+				   y,
+				   mask + offset,
+				   w,
+				   h,
+				   BLACK);
 
 	arduboy.drawBitmap(x,
 			   y,
-			   img + (w * ((h + 7) / 8) * nr) + 2,
+			   img + offset,
 			   w,
 			   h,
 			   WHITE);
@@ -1274,7 +1292,7 @@ static void draw_bullets(void)
 			blit_image_frame(bs->x,
 					 bs->ys,
 					 water_bomb_air_img,
-					 NULL,
+					 water_bomb_air_mask_img,
 					 bs->frame,
 					 __flag_none);
 			break;

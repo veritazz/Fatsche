@@ -777,7 +777,7 @@ static const uint8_t enemy_damage[ENEMY_MAX] = {
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
-	16, 64, 32
+	16, 64, 32,
 };
 
 static const int8_t enemy_mtime[ENEMY_MAX] = {
@@ -971,7 +971,7 @@ static void update_enemies(void)
 		width = img_width(enemy_sprites[e->type]);
 		height = img_height(enemy_sprites[e->type]);
 		/* check if hit by bullet */
-		if (e->state < ENEMY_DYING)
+		if (e->life > 0)
 			damage = get_bullet_damage(e->lane, e->x, e->y, width, height);
 		if (damage) {
 			e->life -= damage; /* bullet damage */

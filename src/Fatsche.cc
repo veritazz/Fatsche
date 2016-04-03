@@ -601,7 +601,11 @@ struct bullet {
 };
 
 static struct weapon_states {
-	uint8_t selected; /* selected weapon */
+	uint8_t selected:3; /* selected weapon */
+	uint8_t previous:3; /* previous selected weapon */
+	uint8_t direction:1;
+	uint8_t stime;
+	int8_t icon_x;
 	uint8_t ammo[NR_WEAPONS]; /* available ammo per weapon */
 	struct bullet bs[NR_BULLETS];
 } ws;
@@ -711,6 +715,31 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 	}
 
 	return damage;
+}
+
+void select_weapon(int8_t up_down)
+{
+	ws.previous = ws.selected;
+	if (cs.x < 64 - img_width(player_all_frames_img) / 2) {
+		ws.direction = 1;
+		ws.icon_x = WIDTH;
+	} else {
+		ws.direction = 0;
+		ws.icon_x = -img_width(weapons_img);
+	}
+	if (up_down > 0) {
+		/* select weapon downwards */
+		if (ws.selected == NR_WEAPONS - 1)
+			ws.selected = 0;
+		else
+			ws.selected++;
+	} else {
+		/* select weapon upwards */
+		if (ws.selected == 0)
+			ws.selected = NR_WEAPONS - 1;
+		else
+			ws.selected--;
+	}
 }
 
 /*---------------------------------------------------------------------------
@@ -1142,6 +1171,25 @@ static void update_scene(void)
 {
 	/* update scene animations */
 
+	/* show selected weapon icon */
+	if (ws.selected != ws.previous) {
+		if (ws.direction) {
+			if (ws.icon_x == WIDTH - img_width(weapons_img))
+				ws.previous = ws.selected;
+			else {
+				ws.stime = FPS;
+				ws.icon_x-=2;
+			}
+		} else {
+			if (ws.icon_x == 0)
+				ws.previous = ws.selected;
+			else {
+				ws.stime = FPS;
+				ws.icon_x+=2;
+			}
+		}
+	}
+
 	/* update lamp animation */
 	if (timer_500ms_ticks & 1)
 		lamp_frame = random8(2);
@@ -1259,6 +1307,16 @@ static void draw_scene(void)
 				 3);
 	}
 
+	if (ws.stime) {
+		blit_image_frame(ws.icon_x,
+				 0,
+				 weapons_img,
+				 NULL,
+				 ws.selected,
+				 __flag_none);
+		ws.stime--;
+	}
+
 	/* draw weather animation */
 	/* TODO */
 
@@ -1356,17 +1414,9 @@ run(void)
 
 		/* check user inputs */
 		if (up()) {
-			/* select weapon upwards */
-			if (ws.selected == 0)
-				ws.selected = NR_WEAPONS - 1;
-			else
-				ws.selected--;
+			select_weapon(-1);
 		} else if (down()) {
-			/* select weapon downwards */
-			if (ws.selected == NR_WEAPONS - 1)
-				ws.selected = 0;
-			else
-				ws.selected++;
+			select_weapon(1);
 		} else if (left()) {
 			/* move character to the left */
 			dx = -1;

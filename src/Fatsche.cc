@@ -626,13 +626,28 @@ static const uint8_t max_ammo[NR_WEAPONS] = {
 
 static const uint8_t lane_y[3] = {52, 56, 62};
 
-static uint8_t new_bullet(uint8_t x, uint8_t lane, uint8_t weapon)
+static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 {
-	uint8_t b;
+	uint8_t b, x = 0;
 	struct bullet *bs = &ws.bs[0];
 
 	if (ws.ammo[weapon] == 0)
 		return 0;
+
+	if (cs.state != PLAYER_RESTS)
+		b = cs.state;
+	else
+		b = cs.previous_state;
+
+	switch (b) {
+	case PLAYER_L_MOVE:
+		x = cs.x;
+		break;
+	case PLAYER_R_MOVE:
+		x = cs.x + img_width(player_all_frames_img) -
+		    img_width(water_bomb_air_img); /* TODO this might be different for other weapons */
+		break;
+	}
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
@@ -1424,11 +1439,11 @@ run(void)
 		}
 		if (a()) {
 			/* throws bullet to the lower lane of the street */
-			throws = new_bullet(cs.x, LOWER_LANE, ws.selected);
+			throws = new_bullet(LOWER_LANE, ws.selected);
 		}
 		if (b()) {
 			/* throws bullet to the upper lane of the street */
-			throws = new_bullet(cs.x, UPPER_LANE, ws.selected);
+			throws = new_bullet(UPPER_LANE, ws.selected);
 		}
 
 		/* update bullets */

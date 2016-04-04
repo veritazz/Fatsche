@@ -1019,7 +1019,7 @@ static void enemy_prepare_direction_change(struct enemy *e, uint8_t width)
 
 static void update_enemies(void)
 {
-	uint8_t damage = 0;
+	uint8_t damage;
 	uint8_t i, width, height;
 	struct enemy *e = &enemies[0];
 	struct enemy *a;
@@ -1031,6 +1031,7 @@ static void update_enemies(void)
 		width = img_width(enemy_sprites[e->type]);
 		height = img_height(enemy_sprites[e->type]);
 		/* check if hit by bullet */
+		damage = 0;
 		if (e->life > 0)
 			damage = get_bullet_damage(e->lane, e->x, e->y, width, height);
 		if (damage) {

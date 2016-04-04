@@ -533,9 +533,7 @@ static void player_set_state(uint8_t new_state)
 	if (new_state != PLAYER_RESTS)
 		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 
-	if (cs.state != PLAYER_RESTS)
-		cs.previous_state = cs.state;
-
+	cs.previous_state = cs.state;
 	cs.state = new_state;
 }
 
@@ -558,7 +556,7 @@ static void update_player(int8_t dx, uint8_t throws)
 	}
 
 	/* XXX might introduce timeout to reduce fire rate */
-	if (throws)
+	if (throws && cs.state == PLAYER_RESTS)
 		player_set_state(cs.previous_state);
 
 	/* update frames */

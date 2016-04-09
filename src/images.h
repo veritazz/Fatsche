@@ -15,8 +15,10 @@ extern const uint8_t enemy_boss_img[1538];
 extern const uint8_t scene_lamp_img[44];
 extern const uint8_t numbers_3x5_img[32];
 extern const uint8_t weapons_img[210];
-extern const uint8_t powerups_img[122];
+extern const uint8_t powerups_img[66];
+extern const uint8_t menu_drops_img[86];
+extern const uint8_t characters_3x4_img[56];
 
-/* total size 5034 bytes */
+/* total size 5120 bytes */
 
 #endif

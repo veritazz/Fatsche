@@ -25,7 +25,7 @@ def write_image(width, height, data, f):
 				if (h + row * 8) >= height:
 					break
 				c = data[(h + row * 8) * width + w]
-				if c:
+				if c == 15:
 					f_data[o] = f_data[o] | (0x1 << h)
 			o += 1
 
@@ -44,7 +44,7 @@ def write_image_as_comment(width, height, data, f):
 		f.write("\n * ")
 		for w in range(width):
 			c = data[(h * (width + 0)) + w]
-			if c:
+			if c == 15:
 				f.write("*")
 			else:
 				f.write("_")

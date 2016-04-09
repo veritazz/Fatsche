@@ -12,4 +12,6 @@
 			-v 2 -h 1 -f scene_lamp.png \
 			-v 10 -h 1 -f numbers_3x5.png \
 			-v 4 -h 1 -f weapons.png \
-			-v 2 -h 1 -f powerups.png
+			-v 8 -h 1 -f powerups.png \
+			-v 12 -h 1 -f menu_drops.png \
+			-v 1 -h 1 -f characters_3x4.png

@@ -5,7 +5,7 @@
 #endif
 #include <stdint.h>
 
-/* mainscreen.png height = 64 width = 128 */
+/* assets/mainscreen.png height = 64 width = 128 */
 /*
  * ********************************************************************************************************************************
  * *______________________________________________________________________________________________________________________________*
@@ -165,7 +165,7 @@ const uint8_t mainscreen_img[1026] PROGMEM = {
 
 /* total size 1026 bytes */
 
-/* game_background.png height = 64 width = 128 */
+/* assets/game_background.png height = 64 width = 128 */
 /*
  * ________________________________________________________________________________________________________________________________
  * ________________________________________________________________________________________________________________________________
@@ -325,7 +325,7 @@ const uint8_t game_background_img[1026] PROGMEM = {
 
 /* total size 2052 bytes */
 
-/* water_bomb_air.png height = 20 width = 4 */
+/* assets/water_bomb_air.png height = 20 width = 4 */
 /*
  * _*__
  * __*_
@@ -359,7 +359,7 @@ const uint8_t water_bomb_air_img[18] PROGMEM = {
 
 /* total size 2070 bytes */
 
-/* water_bomb_air_mask.png height = 20 width = 4 */
+/* assets/water_bomb_air_mask.png height = 20 width = 4 */
 /*
  * ____
  * ____
@@ -393,7 +393,7 @@ const uint8_t water_bomb_air_mask_img[18] PROGMEM = {
 
 /* total size 2088 bytes */
 
-/* bomb_splash.png height = 24 width = 8 */
+/* assets/bomb_splash.png height = 24 width = 8 */
 /*
  * *__*____
  * ______*_
@@ -431,7 +431,7 @@ const uint8_t bomb_splash_img[34] PROGMEM = {
 
 /* total size 2122 bytes */
 
-/* player_all_frames.png height = 156 width = 12 */
+/* assets/player_all_frames.png height = 156 width = 12 */
 /*
  * ____________
  * __*******___
@@ -621,7 +621,7 @@ const uint8_t player_all_frames_img[290] PROGMEM = {
 
 /* total size 2412 bytes */
 
-/* enemy_raider.png height = 256 width = 14 */
+/* assets/enemy_raider.png height = 256 width = 14 */
 /*
  * _____**__*____
  * _______*___*__
@@ -935,7 +935,7 @@ const uint8_t enemy_raider_img[450] PROGMEM = {
 
 /* total size 2862 bytes */
 
-/* enemy_grandma.png height = 128 width = 14 */
+/* assets/enemy_grandma.png height = 128 width = 14 */
 /*
  * ______________
  * ______________
@@ -1097,7 +1097,7 @@ const uint8_t enemy_grandma_img[226] PROGMEM = {
 
 /* total size 3088 bytes */
 
-/* enemy_boss.png height = 384 width = 32 */
+/* assets/enemy_boss.png height = 384 width = 32 */
 /*
  * ________________________________
  * ________________________________
@@ -1623,7 +1623,7 @@ const uint8_t enemy_boss_img[1538] PROGMEM = {
 
 /* total size 4626 bytes */
 
-/* scene_lamp.png height = 48 width = 7 */
+/* assets/scene_lamp.png height = 48 width = 7 */
 /*
  * __*****
  * _*_***_
@@ -1685,7 +1685,7 @@ const uint8_t scene_lamp_img[44] PROGMEM = {
 
 /* total size 4670 bytes */
 
-/* numbers_3x5.png height = 50 width = 3 */
+/* assets/numbers_3x5.png height = 50 width = 3 */
 /*
  * ***
  * *_*
@@ -1755,7 +1755,7 @@ const uint8_t numbers_3x5_img[32] PROGMEM = {
 
 /* total size 4702 bytes */
 
-/* weapons.png height = 52 width = 26 */
+/* assets/weapons.png height = 52 width = 26 */
 /*
  * _************************_
  * *________________________*
@@ -1837,7 +1837,7 @@ const uint8_t weapons_img[210] PROGMEM = {
 
 /* total size 4912 bytes */
 
-/* powerups.png height = 64 width = 8 */
+/* assets/powerups.png height = 64 width = 8 */
 /*
  * ________
  * _**__**_
@@ -1919,7 +1919,7 @@ const uint8_t powerups_img[66] PROGMEM = {
 
 /* total size 4978 bytes */
 
-/* menu_drops.png height = 96 width = 7 */
+/* assets/menu_drops.png height = 96 width = 7 */
 /*
  * ______*
  * ______*
@@ -2037,7 +2037,7 @@ const uint8_t menu_drops_img[86] PROGMEM = {
 
 /* total size 5064 bytes */
 
-/* characters_3x4.png height = 8 width = 54 */
+/* assets/characters_3x4.png height = 8 width = 54 */
 /*
  * _*_**__****_**********_*_*_****_**__*_***_***********_
  * *_***_*__*_***_*__*__*_*_____***_*__****_**_**_**_**_*

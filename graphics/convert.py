@@ -2,6 +2,7 @@
 
 import getopt, sys
 from PIL import Image
+from os.path import basename
 
 def find_all(a_str, sub):
 	start = 0
@@ -119,11 +120,11 @@ if __name__ == "__main__":
 
 			total_size += size
 
-			hfile.write("extern const uint8_t %s_img[%u];\n" % (filename.split('.')[0], size))
+			hfile.write("extern const uint8_t %s_img[%u];\n" % (basename(filename).split('.')[0], size))
 
 			cfile.write("\n/* %s height = %u width = %u */\n" % (filename, height, width))
 			write_image_as_comment(width, height, fdata, cfile)
-			cfile.write("const uint8_t %s_img[%u] PROGMEM = {\n" % (filename.split('.')[0], size))
+			cfile.write("const uint8_t %s_img[%u] PROGMEM = {\n" % (basename(filename).split('.')[0], size))
 
 			cfile.write("\t0x%2.2x, /* width */\n" % (rwidth))
 			cfile.write("\t0x%2.2x, /* height */\n" % (rheight))

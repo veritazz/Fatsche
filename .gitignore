@@ -31,6 +31,9 @@
 # dependency files
 *.d
 
+# generated json files
+graphics/*.json
+
 # misc
 *.hex
 *.eep

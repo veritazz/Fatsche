@@ -1,16 +1,11 @@
 #!/usr/bin/python
 
-import getopt, sys
+import glob
+import numpy
+import getopt, sys, json
 from PIL import Image
 from os.path import basename
-
-def find_all(a_str, sub):
-	start = 0
-	while True:
-		start = a_str.find(sub, start)
-		if start == -1: return
-		yield start
-		start += len(sub)
+from collections import OrderedDict
 
 def write_image(width, height, data, f):
 	size = (width * ((height + 7) / 8 * 8)) / 8
@@ -57,39 +52,23 @@ def usage():
 def chunk(seq, size):
 	return [seq[i:i+size] for i in range(0, len(seq), size)]
 
-outputfilename = "code"
+def decode_json(jdata):
+	frames = len(jdata["frames"])
+	filename = jdata["meta"]["image"]
+	img_width = jdata["meta"]["size"]["w"]
+	img_height = jdata["meta"]["size"]["h"]
+	fdata = jdata["frames"].values()[0]
+	x = fdata["frame"]["x"]
+	y = fdata["frame"]["y"]
+	w = fdata["spriteSourceSize"]["w"]
+	h = fdata["spriteSourceSize"]["h"]
+	offset = w * h
+	# assume all sprites have the same dimension
+	return [filename, frames, img_width, img_height, w, h, offset]
+
+outputfilename = "images"
 
 if __name__ == "__main__":
-	nr_images = 0
-	images = []
-	image = [0, 0, None]
-	try:
-		opts, args = getopt.getopt(sys.argv[1:], "o:dv:h:f:", ["help", "output="])
-	except getopt.GetoptError:
-		usage()
-		sys.exit(2)
-	for opt, arg in opts:
-		if opt == "--help":
-			usage()
-			sys.exit()
-		elif opt == '-d':
-			global _debug
-			_debug = 1
-		elif opt in ("-o", "--output"):
-			outputfilename = arg
-		elif opt == '-v':
-			image[0] = int(arg)
-		elif opt == '-h':
-			image[1] = int(arg)
-		elif opt == '-f':
-			image[2] = arg
-		if image[0] and image[1] and image[2]:
-			nr_images += 1
-			images.append(image)
-			image = [0, 0, None]
-
-	print images
-
 	with open(outputfilename + ".c", 'w') as cfile, open(outputfilename + ".h", 'w') as hfile:
 		hfile.write("#ifndef __CODE_H\n#define __CODE_H\n\n#include <stdint.h>\n\n")
 
@@ -101,41 +80,54 @@ if __name__ == "__main__":
 		cfile.write("#include <stdint.h>\n")
 
 		total_size = 0
-		for v, h, filename in images:
+
+		for json_filename in glob.glob("*.json"):
+			img_name = basename(json_filename).split('.')[0] #json_filename[:-5]
+			jdata = None
+			with open(json_filename) as jdatafile:
+				jdata = json.load(jdatafile, object_pairs_hook=OrderedDict)
+			if not jdata:
+				continue
+			filename, frames, width, height, fw, fh, offset = decode_json(jdata)
 
 			im = Image.open(filename)
 #			print im.getcolors()
 			palette= im.getpalette()
 			colours = [bytes for bytes in chunk(palette, 3)]
 #			print colours
-			width, height = im.size
+#			width, height = im.size
 			fdata = list(im.getdata())
 
-			print filename + ": height = %u width = %u" % (height, width)
+			# create array of height cells each width elements
+			a = numpy.reshape(numpy.asarray(fdata), (height, width))
 
-			rwidth = width / h
-			rheight = height / v
+			size = ((height + 7) / 8) * width + 2
 
-			size = ((rheight + 7) / 8) * rwidth * h * v + 2
+			# print some information
+			print "%-40s" % (filename),
+			print "  img width: %3u img height: %3u" % (width, height),
+			print "  frame width: %3u frame height: %3u" % (fw, fh),
+			print "  frames: %3u" % (frames),
+			print "  size: %5u" % (size)
 
 			total_size += size
 
-			hfile.write("extern const uint8_t %s_img[%u];\n" % (basename(filename).split('.')[0], size))
+			hfile.write("extern const uint8_t %s_img[%u];\n" % (img_name, size))
 
-			cfile.write("\n/* %s height = %u width = %u */\n" % (filename, height, width))
-			write_image_as_comment(width, height, fdata, cfile)
-			cfile.write("const uint8_t %s_img[%u] PROGMEM = {\n" % (basename(filename).split('.')[0], size))
+			cfile.write("\n/* %s height = %u width = %u */\n" % (filename, fh, fw))
+			cfile.write("const uint8_t %s_img[%u] PROGMEM = {\n" % (img_name, size))
 
-			cfile.write("\t0x%2.2x, /* width */\n" % (rwidth))
-			cfile.write("\t0x%2.2x, /* height */\n" % (rheight))
+			cfile.write("\t0x%2.2x, /* width */\n" % (fw))
+			cfile.write("\t0x%2.2x, /* height */\n" % (fh))
 
-			offset = 0
-			for himages in range(h):
-				for vimages in range(v):
-					print offset, rwidth, rheight
-					write_image(rwidth, rheight, fdata[offset:offset+rwidth*rheight], cfile)
-					cfile.write("\n")
-					offset += rwidth * rheight
+			foffset = 0
+			for frame in range(frames):
+				foffset = frame * fw
+				# copy each image and reshape to linear list
+				img = numpy.reshape(a[:,foffset:foffset+fw], fw*fh).tolist()
+				write_image_as_comment(fw, fh, img, cfile)
+				write_image(fw, fh, img, cfile)
+				cfile.write("\n")
 
 			cfile.write("};\n")
 			cfile.write("\n/* total size %u bytes */\n" % total_size);

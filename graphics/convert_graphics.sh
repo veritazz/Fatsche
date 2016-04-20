@@ -1,19 +1,28 @@
 #!/bin/sh
 
 a=assets
+ase=ase
 
-./convert.py -o images  -v 1  -h 1 -f $a/mainscreen.png \
-			-v 1  -h 1 -f $a/game_background.png \
-			-v 4  -h 1 -f $a/water_bomb_air.png \
-			-v 4  -h 1 -f $a/water_bomb_air_mask.png \
-			-v 4  -h 1 -f $a/bomb_splash.png \
-			-v 12 -h 1 -f $a/player_all_frames.png \
-			-v 16 -h 1 -f $a/enemy_raider.png \
-			-v 8  -h 1 -f $a/enemy_grandma.png \
-			-v 12 -h 1 -f $a/enemy_boss.png \
-			-v 2  -h 1 -f $a/scene_lamp.png \
-			-v 10 -h 1 -f $a/numbers_3x5.png \
-			-v 4  -h 1 -f $a/weapons.png \
-			-v 8  -h 1 -f $a/powerups.png \
-			-v 12 -h 1 -f $a/menu_drops.png \
-			-v 1  -h 1 -f $a/characters_3x4.png
+# all assets, mask layer should not be visible
+assets="mainscreen game_background enemy_little_girl water_bomb_air
+	bomb_splash player_all_frames enemy_raider enemy_grandma enemy_boss
+	scene_lamp numbers_3x5 weapons powerups menu_drops characters_3x4"
+
+# assets that have a mask layer
+assets_w_mask="water_bomb_air"
+
+# batch process all aseprite files to png/json files
+for asset in $assets
+do
+	aseprite --batch $ase/${asset}.ase --sheet-type=vertical --sheet $a/${asset}.png --data ${asset}.json
+done
+for asset in $assets_w_mask
+do
+	aseprite --all-layers --batch --layer "mask" $ase/${asset}.ase --sheet-type vertical --sheet $a/${asset}_mask.png --data ${asset}_mask.json
+done
+
+# read all json files and convert them to C code
+./convert.py
+
+# copy C code images to source directory
+cp images.* ../src

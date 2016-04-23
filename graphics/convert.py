@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
 		total_size = 0
 
-		for json_filename in glob.glob("*.json"):
+		for json_filename in sorted(glob.glob("*.json")):
 			img_name = basename(json_filename).split('.')[0] #json_filename[:-5]
 			jdata = None
 			with open(json_filename) as jdatafile:

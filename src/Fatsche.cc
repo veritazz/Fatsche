@@ -361,131 +361,84 @@ setup(void)
 /*---------------------------------------------------------------------------
  * main menu handling
  *---------------------------------------------------------------------------*/
-/*
- *  bit[0]   = 0 mainscreen not drawn, 1 already drawn
- *  bit[1:3] = current frame number of animation
- *  bit[4]   = 0 animation frame not drawn, 1 already drawn
- *  bit[5:6] = selected menu item
- */
-static uint8_t menu_state = 0;
-
-enum menu_item {
-	MENU_ITEM_PLAY  = 0,
-	MENU_ITEM_PROGRAM_LOAD_GAME,
-	MENU_ITEM_PROGRAM_SHOW_HELP,
-	MENU_ITEM_CONTINUE,
-	MENU_ITEM_SAVE,
+enum menu_states {
+	MENU_STATE_PLAY,
+	MENU_STATE_LOAD,
+	MENU_STATE_HELP,
+	MENU_STATE_INIT,
 };
 
-const uint8_t menu_item_xlate[] PROGMEM = {
-	[MENU_ITEM_PLAY] = PROGRAM_RUN_GAME,
-	[MENU_ITEM_PROGRAM_LOAD_GAME] = PROGRAM_LOAD_GAME,
-	[MENU_ITEM_PROGRAM_SHOW_HELP] = PROGRAM_SHOW_HELP,
-	[MENU_ITEM_CONTINUE] = PROGRAM_RUN_GAME,
-	[MENU_ITEM_SAVE] = PROGRAM_MAIN_MENU,
+struct menu_data {
+	uint8_t n_game_state;
+	uint8_t x;
 };
 
-#define MENU_ITEM_X               20
-#define MENU_ITEM_DISTANCE        15
-
-const uint8_t menu_item_selected_img[18] = {
-	16, /* width */
-	8, /* height */
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+const struct menu_data menu_item_xlate[] = {
+	[MENU_STATE_PLAY] = { .n_game_state = PROGRAM_RUN_GAME, .x = 19, },
+	[MENU_STATE_LOAD] = { .n_game_state = PROGRAM_LOAD_GAME, .x = 51, },
+	[MENU_STATE_HELP] = { .n_game_state = PROGRAM_SHOW_HELP, .x = 82, },
 };
-const uint8_t menu_item_delete_img[18] = {
-	16, /* width */
-	8, /* height */
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+struct menu {
+	uint8_t state;
+};
+
+static struct menu menu = {
+	.state = MENU_STATE_INIT,
 };
 
 static int
 mainscreen(void)
 {
-	uint8_t frame = (menu_state >> 1) & 0x7;
 	uint8_t game_state = PROGRAM_MAIN_MENU;
 	uint8_t needs_update = 1;
-	uint8_t menu_item = (menu_state >> 5) & 0x3;
-	static uint8_t next_frame = FPS; /* updates of the animation */
+	const struct menu_data *data;
+	uint8_t state = menu.state;
 
-	/* print main screen */
-	if (!(menu_state & 1)) {
-		blit_image(0, 0, mainscreen_img, NULL, __flag_none);
-
-		/* draw new item highlighted */
-		blit_image(MENU_ITEM_X,
-			   menu_item * MENU_ITEM_DISTANCE,
-			   menu_item_selected_img,
-			   NULL,
-			   __flag_none);
-
-		menu_state |= 1;
-		next_frame = FPS;
-	}
-
-	/* TODO check user inputs if another menu item was selected */
-	if (up()) {
-		if (!menu_item)
-			menu_item = 3;
+	if (left()) {
+		if (menu.state == MENU_STATE_PLAY)
+			menu.state = MENU_STATE_HELP;
 		else
-			menu_item--;
-	} else if (down()) {
-		if (menu_item == 3)
-			menu_item = 0;
+			menu.state--;
+	} else if (right()) {
+		if (menu.state == MENU_STATE_HELP)
+			menu.state = MENU_STATE_PLAY;
 		else
-			menu_item++;
-	} else if (a()) {
-		/* select/execute item */
-		game_state = pgm_read_byte_near(&menu_item_xlate[menu_item]);
-	} else if (b()) {
-		/* cancel/back */
-	} else {
+			menu.state++;
+	} else
 		needs_update = 0;
+
+	if (state == MENU_STATE_INIT) {
+		needs_update = 1;
+		if (menu.state == state)
+			menu.state = MENU_STATE_PLAY;
 	}
 
-	/* highlight selected menu item */
+	data = &menu_item_xlate[menu.state];
+	if (a())
+		game_state = data->n_game_state;
+
 	if (needs_update) {
-		/* draw old item with no highlight */
-		blit_image(MENU_ITEM_X,
-			   ((menu_state >> 5) & 3) * MENU_ITEM_DISTANCE,
-			   menu_item_delete_img,
+		blit_image(0,
+			   0,
+			   mainscreen_img,
 			   NULL,
 			   __flag_white);
-		/* draw new item highlighted */
-		blit_image(MENU_ITEM_X,
-			   menu_item * MENU_ITEM_DISTANCE,
-			   menu_item_selected_img,
-			   NULL,
-			   __flag_none);
-		menu_state &= ~(0x3 << 5);
-		menu_state |= menu_item << 5;
+		draw_hline(data->x, 51, 26);
+		draw_vline(data->x - 1, 52, 9);
 	}
 
-	/* update animation on the right side of the screen */
-	if (!(menu_state & (1 << 4))) {
-	// HACK	blit_image_frame(80, 0, mainscreen_animation, frame, __flag_none);
-		menu_state |= 1 << 4;
-	}
-
-	/* if a new frame begins advance the frame counter of the animation */
-	if (next_frame == 0) {
-		next_frame = FPS;
-		frame = (frame + 1) % 8;
-		menu_state &= ~(0xf << 1);
-		menu_state |= (frame << 1);
-	}
-	next_frame--;
-
-	/* reset menu state if we leave the main menu */
-	if (game_state != PROGRAM_MAIN_MENU)
-		menu_state &= ~1;
 	return game_state;
 }
 
 static int
 load(void)
+{
+	return PROGRAM_MAIN_MENU;
+}
+
+static int
+help(void)
 {
 	return PROGRAM_MAIN_MENU;
 }
@@ -1477,12 +1430,6 @@ run(void)
 		break;
 	}
 	return rstate;
-}
-
-static int
-help(void)
-{
-	return PROGRAM_MAIN_MENU;
 }
 
 /*---------------------------------------------------------------------------

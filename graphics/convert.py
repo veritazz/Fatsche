@@ -34,8 +34,8 @@ def write_image(width, height, data, f):
 		else:
 			f.write(" ")
 
-def write_image_as_comment(width, height, data, f):
-	f.write("/*")
+def write_image_as_comment(width, height, data, frame, f):
+	f.write("/* [%u]" % frame)
 	for h in range(height):
 		f.write("\n * ")
 		for w in range(width):
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 				foffset = frame * fw
 				# copy each image and reshape to linear list
 				img = numpy.reshape(a[:,foffset:foffset+fw], fw*fh).tolist()
-				write_image_as_comment(fw, fh, img, cfile)
+				write_image_as_comment(fw, fh, img, frame, cfile)
 				write_image(fw, fh, img, cfile)
 				cfile.write("\n")
 

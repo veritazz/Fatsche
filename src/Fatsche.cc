@@ -373,43 +373,91 @@ struct menu_data {
 	uint8_t x;
 };
 
-const struct menu_data menu_item_xlate[] = {
+static const struct menu_data menu_item_xlate[] = {
 	[MENU_STATE_PLAY] = { .n_game_state = PROGRAM_RUN_GAME, .x = 19, },
 	[MENU_STATE_LOAD] = { .n_game_state = PROGRAM_LOAD_GAME, .x = 51, },
 	[MENU_STATE_HELP] = { .n_game_state = PROGRAM_SHOW_HELP, .x = 82, },
 };
 
+struct menu_drop {
+	uint8_t idx;
+	uint16_t stime; /* show time of next drop */
+	uint8_t atime; /* time till next frame */
+	uint8_t state:4; /* state of drop */
+	uint8_t frame:4; /* current frame of drop */
+	uint8_t x;
+	uint8_t y;
+};
+
+#define NR_OF_DROPS                           7
+
 struct menu {
+	uint8_t update;
 	uint8_t state;
+	struct menu_drop drop[NR_OF_DROPS];
 };
 
 static struct menu menu = {
+	.update = 0,
 	.state = MENU_STATE_INIT,
 };
+
+static const uint8_t menu_drop_x_locations[NR_OF_DROPS] = {
+	9, 38, 50, 71, 85, 102, 119,
+};
+
+static const uint8_t menu_drop_y_locations[NR_OF_DROPS] = {
+	39, 35, 32, 30, 33, 35, 39,
+};
+
+static const uint8_t menu_drop_state_frame_offsets[] = {
+	0, 4, 0, 8,
+};
+
+static const uint8_t menu_drop_atime[] = {
+	6, 3, 1, 2,
+};
+
+static void menu_drop_init(struct menu_drop *drop)
+{
+	drop->stime = random8(10) * FPS;
+	drop->atime = menu_drop_atime[0];
+	drop->state = 0;
+	drop->frame = 0;
+	drop->x = menu_drop_x_locations[drop->idx];
+	drop->y = menu_drop_y_locations[drop->idx];
+}
 
 static int
 mainscreen(void)
 {
 	uint8_t game_state = PROGRAM_MAIN_MENU;
-	uint8_t needs_update = 1;
 	const struct menu_data *data;
 	uint8_t state = menu.state;
+	struct menu_drop *drop;
+	uint8_t i;
 
 	if (left()) {
 		if (menu.state == MENU_STATE_PLAY)
 			menu.state = MENU_STATE_HELP;
 		else
 			menu.state--;
+		menu.update = 1;
 	} else if (right()) {
 		if (menu.state == MENU_STATE_HELP)
 			menu.state = MENU_STATE_PLAY;
 		else
 			menu.state++;
-	} else
-		needs_update = 0;
+		menu.update = 1;
+	}
 
 	if (state == MENU_STATE_INIT) {
-		needs_update = 1;
+		menu.update = 1;
+		for (i = 0; i < NR_OF_DROPS; i++) {
+			drop = &menu.drop[i];
+			drop->idx = i;
+			menu_drop_init(drop);
+		}
 		if (menu.state == state)
 			menu.state = MENU_STATE_PLAY;
 	}
@@ -418,14 +466,78 @@ mainscreen(void)
 	if (a())
 		game_state = data->n_game_state;
 
-	if (needs_update) {
+	if (menu.update) {
 		blit_image(0,
 			   0,
 			   mainscreen_img,
 			   NULL,
 			   __flag_white);
+
+		for (i = 0; i < NR_OF_DROPS; i++) {
+			drop = &menu.drop[i];
+			if (drop->stime)
+				continue;
+			if (drop->state != 2) {
+				blit_image_frame(drop->x,
+						 drop->y,
+						 menu_drops_img,
+						 NULL,
+						 menu_drop_state_frame_offsets[drop->state] + drop->frame,
+						 __flag_white);
+			} else
+				draw_rect(drop->x, drop->y + 4, 2, 2);
+		}
+
 		draw_hline(data->x, 51, 26);
 		draw_vline(data->x - 1, 52, 9);
+		menu.update = 0;
+	}
+	for (i = 0; i < NR_OF_DROPS; i++) {
+		drop = &menu.drop[i];
+
+		if (drop->stime) {
+			drop->stime--;
+			continue;
+		}
+		/* show time */
+		if (drop->atime) {
+			drop->atime--;
+			continue;
+		}
+
+		menu.update = 1;
+		if (drop->frame == 3 && drop->state != 2) {
+			drop->frame = 0;
+			drop->state++;
+		}
+
+		if (drop->state == 2 && drop->y >= 55) {
+			drop->frame = 0;
+			drop->state++;
+		}
+
+		if (drop->state == 4)
+			menu_drop_init(drop);
+
+		switch (drop->state) {
+		case 0:
+			drop->x = menu_drop_x_locations[drop->idx];
+			drop->y = menu_drop_y_locations[drop->idx];
+			break;
+		case 1:
+			drop->y = menu_drop_y_locations[drop->idx] + 7;
+			break;
+		case 2:
+			drop->x = menu_drop_x_locations[drop->idx] + 2;
+			drop->y += 3;
+			break;
+		case 3:
+			drop->x = menu_drop_x_locations[drop->idx];
+			drop->y = 55;
+			break;
+		}
+		drop->atime = menu_drop_atime[drop->state];
+		drop->frame++;
 	}
 
 	return game_state;

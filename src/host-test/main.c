@@ -232,7 +232,7 @@ draw_hline(uint8_t x, uint8_t y, uint8_t w)
       };
       break;
   }
-
+  update = 1;
 }
 
 void drawPixel(int x, int y, uint8_t color)
@@ -246,6 +246,7 @@ void drawPixel(int x, int y, uint8_t color)
   {
     sBuffer[(row*WIDTH) + (uint8_t)x] &= ~ _BV((uint8_t)y % 8);
   }
+  update = 1;
 }
 
 
@@ -258,6 +259,7 @@ draw_vline(uint8_t x, uint8_t y, uint8_t h)
   {
     drawPixel(x,a,color);
   }
+  update = 1;
 
 }
 
@@ -319,6 +321,7 @@ draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
       err += dx;
     }
   }
+  update = 1;
 }
 
 

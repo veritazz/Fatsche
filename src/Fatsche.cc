@@ -140,6 +140,8 @@ draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 enum timers {
 	TIMER_PLAYER_RESTS,
 	TIMER_ENEMY_SPAWN,
+	TIMER_POWERUP_SPAWN,
+	TIMER_POWERUP_SPAWN2,
 	TIMER_500MS,
 	TIMER_MAX,
 };
@@ -1254,12 +1256,13 @@ static void update_enemies(void)
 			}
 			break;
 		case ENEMY_SWEARING:
-			if (e->frame == e->frame_reload - 1)
+			if (e->frame == e->frame_reload - 1) {
 				if (e->rtime == 0) {
 					e->rtime = enemy_rtime[e->id];
 					enemy_set_state(e, enemy_pop_state(e), 0);
 				} else
 					e->rtime--;
+			}
 			break;
 		case ENEMY_RESTING:
 			if (e->rtime == 0) {
@@ -1299,6 +1302,108 @@ static void update_enemies(void)
 				e->mtime = 0;
 		} else
 			e->mtime--;
+	}
+}
+
+/*---------------------------------------------------------------------------
+ * powerup handling
+ *---------------------------------------------------------------------------*/
+#define MAX_POWERUPS                   2
+
+enum power_up_type {
+	POWER_UP_LIFE,
+	POWER_UP_POISON,
+	POWER_UP_SCORE,
+	POWER_UP_MAX,
+};
+
+struct power_up {
+	uint8_t active;
+	uint8_t type;
+	uint8_t x;
+	uint8_t y;
+	uint8_t lane;
+	uint8_t frame;
+	uint8_t atime;
+	uint16_t timeout;
+};
+
+static struct power_up power_ups[MAX_POWERUPS];
+
+static void spawn_new_powerup(void)
+{
+	uint8_t i, width, height;
+	struct power_up *p;
+
+	width = img_width(powerups_img);
+	height = img_height(powerups_img);
+
+	for (i = 0; i < MAX_POWERUPS; i++) {
+		p = &power_ups[i];
+		if (p->active)
+			continue;
+		p->active = 1;
+		p->atime = 2;
+		p->frame = 0;
+		p->timeout = (random8(4) + 4) * FPS;
+		p->lane = 1 + random8(2);
+		p->x = random8(WIDTH - width);
+		p->y = lane_y[p->lane] - height;
+		/* make life and poison less often */
+		p->type = random8(POWER_UP_MAX);
+		break;
+	}
+
+}
+
+static void update_powerups(void)
+{
+	uint8_t i, width, height;
+	struct power_up *p;
+
+	width = img_width(powerups_img);
+	height = img_height(powerups_img);
+
+	for (i = 0; i < MAX_POWERUPS; i++) {
+		p = &power_ups[i];
+		if (!p->active)
+			continue;
+		p->timeout--;
+		if (!p->timeout) {
+			p->active = 0;
+			start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
+			continue;
+		}
+		/* check if hit by player */
+		if (get_bullet_damage(p->lane, p->x, p->y, width, height)) {
+			p->active = 0;
+			start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
+			switch (p->type) {
+			case POWER_UP_LIFE:
+				/* TODO use function for this, flying number? */
+				cs.life += 32;
+				if (cs.life > PLAYER_MAX_LIFE)
+					cs.life = PLAYER_MAX_LIFE;
+				break;
+			case POWER_UP_POISON:
+				/* TODO */
+				break;
+			case POWER_UP_SCORE:
+				/* TODO: little flying number? */
+				cs.score += 100;
+				break;
+			}
+		}
+
+		if (p->atime) {
+			p->atime--;
+			continue;
+		}
+
+		p->atime = 2;
+		p->frame++;
+		if (p->frame == 4)
+			p->frame = 0;
 	}
 }
 
@@ -1424,6 +1529,25 @@ static void draw_enemies(void)
 	}
 }
 
+static void draw_powerups(void)
+{
+
+	uint8_t i;
+	struct power_up *p;
+
+	for (i = 0; i < MAX_POWERUPS; i++) {
+		p = &power_ups[i];
+		if (!p->active)
+			continue;
+		blit_image_frame(p->x,
+				 p->y,
+				 powerups_img,
+				 NULL,
+				 p->frame + (p->type * 4),
+				 __flag_none);
+	}
+}
+
 static void draw_scene(void)
 {
 	int16_t life_level;
@@ -1530,7 +1654,11 @@ run(void)
 		/* setup timer for enemy spawning */
 		setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
 		start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
-		game_state = GAME_STATE_RUN_GAME;
+		/* setup timer for enemy spawning */
+		setup_timer(TIMER_POWERUP_SPAWN, spawn_new_powerup);
+		start_timer(TIMER_POWERUP_SPAWN, random8(8) * FPS + ENEMIES_SPAWN_RATE);
+		setup_timer(TIMER_POWERUP_SPAWN + 1, spawn_new_powerup);
+		start_timer(TIMER_POWERUP_SPAWN + 1, random8(8) * FPS + ENEMIES_SPAWN_RATE);
 		/* setup general purpose 500ms counting timer */
 		timer_500ms_ticks = 0;
 		setup_timer(TIMER_500MS, timer_500ms_counter);
@@ -1538,6 +1666,8 @@ run(void)
 
 		memset(&door, 0, sizeof(door));
 		door.boss_countdown = KILLS_TILL_BOSS;
+
+		game_state = GAME_STATE_RUN_GAME;
 		break;
 	case GAME_STATE_RUN_GAME:
 		/* check for game over */
@@ -1575,6 +1705,8 @@ run(void)
 
 		/* update bullets */
 		update_bullets();
+		/* update/spawn powerups */
+		update_powerups();
 		/* update/spawn enemies */
 		update_enemies();
 		/* update scene animations */
@@ -1586,6 +1718,8 @@ run(void)
 		draw_scene();
 		/* draw player */
 		draw_player();
+		/* draw powerups */
+		draw_powerups();
 		/* draw enemies */
 		draw_enemies();
 		/* update animations */
@@ -1600,6 +1734,7 @@ run(void)
 	case GAME_STATE_CLEANUP:
 		init_timers();
 		rstate = PROGRAM_MAIN_MENU;
+		game_state = GAME_STATE_INIT;
 		break;
 	}
 	return rstate;

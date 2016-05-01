@@ -7,7 +7,7 @@ from PIL import Image
 from os.path import basename
 from collections import OrderedDict
 
-def write_image(width, height, data, f):
+def write_image(width, height, data, f, color):
 	size = (width * ((height + 7) / 8 * 8)) / 8
 	f_data = []
 	for b in range(size):
@@ -21,7 +21,7 @@ def write_image(width, height, data, f):
 				if (h + row * 8) >= height:
 					break
 				c = data[(h + row * 8) * width + w]
-				if c == 15:
+				if c == color:
 					f_data[o] = f_data[o] | (0x1 << h)
 			o += 1
 
@@ -34,13 +34,13 @@ def write_image(width, height, data, f):
 		else:
 			f.write(" ")
 
-def write_image_as_comment(width, height, data, frame, f):
+def write_image_as_comment(width, height, data, frame, f, color):
 	f.write("/* [%u]" % frame)
 	for h in range(height):
 		f.write("\n * ")
 		for w in range(width):
 			c = data[(h * (width + 0)) + w]
-			if c == 15:
+			if c == color:
 				f.write("*")
 			else:
 				f.write("_")
@@ -103,8 +103,14 @@ if __name__ == "__main__":
 
 			size = ((height + 7) / 8) * width + 2
 
+			if "_mask" in img_name:
+				color = 14
+				print "%-40s" % (filename + "[mask]"),
+			else:
+				color = 15
+				print "%-40s" % (filename),
+
 			# print some information
-			print "%-40s" % (filename),
 			print "  img width: %3u img height: %3u" % (width, height),
 			print "  frame width: %3u frame height: %3u" % (fw, fh),
 			print "  frames: %3u" % (frames),
@@ -125,8 +131,8 @@ if __name__ == "__main__":
 				foffset = frame * fw
 				# copy each image and reshape to linear list
 				img = numpy.reshape(a[:,foffset:foffset+fw], fw*fh).tolist()
-				write_image_as_comment(fw, fh, img, frame, cfile)
-				write_image(fw, fh, img, cfile)
+				write_image_as_comment(fw, fh, img, frame, cfile, color)
+				write_image(fw, fh, img, cfile, color)
 				cfile.write("\n")
 
 			cfile.write("};\n")

@@ -567,8 +567,16 @@ static struct character_state {
 	uint8_t frame:2; /* current frame of sprite */
 	uint8_t state:2; /* current player state */
 	uint8_t previous_state:2; /* previous player state */
+	uint8_t poison:1;
+	uint16_t poison_timeout;
 	int32_t score; /* current score */
 } cs;
+
+static inline void player_set_poison(void)
+{
+	cs.poison = 1;
+	cs.poison_timeout = 20 * FPS;
+}
 
 enum player_states {
 	PLAYER_L_MOVE,
@@ -632,6 +640,12 @@ static void update_player(int8_t dx, uint8_t throws)
 		cs.frame++;
 	} else
 		cs.atime--;
+
+	if (cs.poison) {
+		cs.poison_timeout--;
+		if (cs.poison_timeout == 0)
+			cs.poison = 0;
+	}
 }
 
 enum game_states {
@@ -923,7 +937,7 @@ static const int8_t enemy_mtime[ENEMY_MAX] = {
 	FPS / 20,
 	FPS / 10,
 	FPS / 5,
-	FPS / 2,
+	FPS / 10,
 };
 
 static const int8_t enemy_rtime[ENEMY_MAX] = {
@@ -952,6 +966,13 @@ static const uint8_t *enemy_sprites[ENEMY_MAX] = {
 	enemy_boss_img,
 	enemy_grandma_img,
 	enemy_little_girl_img,
+};
+
+static const uint8_t *enemy_masks[ENEMY_MAX] = {
+	enemy_raider_mask_img,
+	enemy_boss_mask_img,
+	enemy_grandma_mask_img,
+	enemy_little_girl_mask_img,
 };
 
 static const uint8_t enemy_default_frame_reloads[] = {
@@ -988,6 +1009,8 @@ struct enemy {
 	uint8_t lane:2;
 	uint8_t dlane:2;
 	uint8_t active:1;
+	uint8_t poisoned:3;
+	uint8_t poison_timeout;
 	uint8_t frame_reload;
 	uint8_t state;
 	uint8_t previous_state[4];
@@ -1067,6 +1090,8 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 
 	if (e->state != ENEMY_EFFECT)
 		e->frame = 0;
+	else
+		e->rtime = FPS / 2;
 }
 
 static void spawn_new_enemies(void)
@@ -1141,9 +1166,21 @@ static void update_enemies(void)
 		height = img_height(enemy_sprites[e->id]);
 		/* check if hit by bullet */
 		damage = 0;
-		if (e->life > 0)
+		if (e->life > 0) {
 			damage = get_bullet_damage(e->lane, e->x, e->y, width, height);
+			if (e->poisoned) {
+				if (e->poison_timeout)
+					e->poison_timeout--;
+				else {
+					damage += 2;
+					e->poison_timeout = 2 * FPS;
+					e->poisoned--;
+				}
+			}
+		}
 		if (damage) {
+			if (cs.poison)
+				e->poisoned = 4;
 			e->life -= damage; /* bullet damage */
 			if (e->life <= 0) {
 				if (door.attacker == e) {
@@ -1227,8 +1264,11 @@ static void update_enemies(void)
 				e->x++;
 			break;
 		case ENEMY_EFFECT:
-			if (e->atime == 0)
+			if (e->rtime == 0) {
+				e->rtime = enemy_rtime[e->id];
 				enemy_set_state(e, enemy_pop_state(e), 0);
+			} else
+				e->rtime--;
 			break;
 		case ENEMY_CHANGE_LANE:
 			if (e->lane != e->dlane) {
@@ -1289,7 +1329,8 @@ static void update_enemies(void)
 		/* next animation */
 		if (e->atime == 0) {
 			e->atime = enemy_atime[e->id];
-			e->frame++;
+			if (e->state != ENEMY_EFFECT)
+				e->frame++;
 			if (e->frame == e->frame_reload)
 				e->frame = 0;
 		} else
@@ -1353,7 +1394,6 @@ static void spawn_new_powerup(void)
 		p->type = random8(POWER_UP_MAX);
 		break;
 	}
-
 }
 
 static void update_powerups(void)
@@ -1366,44 +1406,52 @@ static void update_powerups(void)
 
 	for (i = 0; i < MAX_POWERUPS; i++) {
 		p = &power_ups[i];
-		if (!p->active)
-			continue;
-		p->timeout--;
-		if (!p->timeout) {
-			p->active = 0;
-			start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
-			continue;
-		}
-		/* check if hit by player */
-		if (get_bullet_damage(p->lane, p->x, p->y, width, height)) {
-			p->active = 0;
-			start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
-			switch (p->type) {
-			case POWER_UP_LIFE:
-				/* TODO use function for this, flying number? */
-				cs.life += 32;
-				if (cs.life > PLAYER_MAX_LIFE)
-					cs.life = PLAYER_MAX_LIFE;
-				break;
-			case POWER_UP_POISON:
-				/* TODO */
-				break;
-			case POWER_UP_SCORE:
-				/* TODO: little flying number? */
-				cs.score += 100;
-				break;
+		switch (p->active) {
+		case 1:
+			p->timeout--;
+			if (!p->timeout) {
+				p->active = 0;
+				start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
+				continue;
 			}
-		}
+			/* check if hit by player */
+			if (get_bullet_damage(p->lane, p->x, p->y, width, height)) {
+				p->active++;
+				switch (p->type) {
+				case POWER_UP_LIFE:
+					cs.life += 32;
+					if (cs.life > PLAYER_MAX_LIFE)
+						cs.life = PLAYER_MAX_LIFE;
+					break;
+				case POWER_UP_POISON:
+					player_set_poison();
+					break;
+				case POWER_UP_SCORE:
+					cs.score += 100;
+					break;
+				}
+			}
 
-		if (p->atime) {
-			p->atime--;
-			continue;
-		}
+			if (p->atime) {
+				p->atime--;
+				continue;
+			}
 
-		p->atime = 2;
-		p->frame++;
-		if (p->frame == 4)
-			p->frame = 0;
+			p->atime = 2;
+			p->frame++;
+			if (p->frame == 4)
+				p->frame = 0;
+			break;
+		case 2:
+			if (p->y == 0) {
+				start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
+				p->active = 0;
+			} else
+				p->y--;
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -1494,6 +1542,12 @@ static void draw_player(void)
 			 NULL,
 			 player_frame_offsets[cs.state] + cs.frame,
 			 __flag_none);
+	if (cs.poison)
+		blit_image(cs.x + img_width(player_all_frames_img),
+			   0,
+			   poison_damage_img,
+			   NULL,
+			   __flag_none);
 }
 
 static void draw_enemies(void)
@@ -1522,7 +1576,7 @@ static void draw_enemies(void)
 			blit_image_frame(e->x,
 					 e->y,
 					 enemy_sprites[e->id],
-					 NULL,
+					 enemy_masks[e->id],
 					 e->frame + e->sprite_offset,
 					 __flag_none);
 		}
@@ -1531,20 +1585,38 @@ static void draw_enemies(void)
 
 static void draw_powerups(void)
 {
-
-	uint8_t i;
+	uint8_t i, number = 0;
 	struct power_up *p;
 
 	for (i = 0; i < MAX_POWERUPS; i++) {
 		p = &power_ups[i];
-		if (!p->active)
-			continue;
-		blit_image_frame(p->x,
-				 p->y,
-				 powerups_img,
-				 NULL,
-				 p->frame + (p->type * 4),
-				 __flag_none);
+		switch (p->active) {
+		case 1:
+			blit_image_frame(p->x,
+					 p->y,
+					 powerups_img,
+					 powerups_mask_img,
+					 p->frame + (p->type * 4),
+					 __flag_none);
+			break;
+		case 2:
+			/* TODO remove this if numbers are fixed, then use images */
+			switch (p->type) {
+			case POWER_UP_LIFE:
+				number = 32;
+				break;
+			case POWER_UP_POISON:
+				break;
+			case POWER_UP_SCORE:
+				number = 100;
+				break;
+			}
+			if (number)
+				draw_number(p->x, p->y, number, 100, 2);
+			break;
+		default:
+			break;
+		}
 	}
 }
 

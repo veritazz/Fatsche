@@ -339,6 +339,122 @@ static void finish_frame(void)
 }
 
 /*---------------------------------------------------------------------------
+ * data types
+ *---------------------------------------------------------------------------*/
+struct menu_drop {
+	uint8_t idx;
+	uint16_t stime; /* show time of next drop */
+	uint8_t atime; /* time till next frame */
+	uint8_t state:4; /* state of drop */
+	uint8_t frame:4; /* current frame of drop */
+	uint8_t x;
+	uint8_t y;
+};
+
+#define NR_OF_DROPS                           7
+
+struct menu {
+	uint8_t initialized;
+	uint8_t update;
+	uint8_t state;
+	struct menu_drop drop[NR_OF_DROPS];
+};
+
+struct player {
+	int16_t life; /* remaining life of player */
+	uint8_t x; /* current x position of player */
+	uint8_t atime; /* nr of frames till next frame of sprite */
+	uint8_t frame:2; /* current frame of sprite */
+	uint8_t state:2; /* current player state */
+	uint8_t previous_state:2; /* previous player state */
+	uint8_t poison:1;
+	uint16_t poison_timeout;
+	int32_t score; /* current score */
+};
+
+enum game_states {
+	GAME_STATE_INIT = 0,
+	GAME_STATE_RUN_GAME,
+	GAME_STATE_OVER,
+	GAME_STATE_CLEANUP,
+};
+
+struct enemy {
+	int8_t life;
+	int8_t x;
+	uint8_t dx;
+	uint8_t y;
+	uint8_t type:3;
+	uint8_t id:5;
+	uint8_t atime; /* nr of frames it take for the next animation frame */
+	uint8_t rtime; /* nr of frames it takes to rest */
+	uint8_t mtime; /* nr of frames it takes to move */
+	uint8_t damage;
+	uint8_t frame;
+	uint8_t lane:2;
+	uint8_t dlane:2;
+	uint8_t active:1;
+	uint8_t poisoned:3;
+	uint8_t poison_timeout;
+	uint8_t frame_reload;
+	uint8_t state;
+	uint8_t previous_state[4];
+	uint8_t pindex;
+	uint8_t sprite_offset;
+};
+
+struct door {
+	uint8_t under_attack:1;
+	struct enemy *attacker;
+	uint8_t boss_countdown;
+};
+
+struct bullet {
+	uint8_t x; /* x position of bullet */
+	uint8_t ys; /* y start position of the bullet */
+	uint8_t state:2;
+	uint8_t weapon:2;
+	uint8_t frame:2;
+	uint8_t lane:2;
+	uint8_t atime; /* nr of frames it take for the next animation frame */
+	uint8_t etime; /* nr of frames a weapon has effect on the ground */
+};
+
+struct weapon_states {
+	uint8_t selected:3; /* selected weapon */
+	uint8_t previous:3; /* previous selected weapon */
+	uint8_t direction:1;
+	uint8_t stime;
+	int8_t icon_x;
+	uint8_t ammo[NR_WEAPONS]; /* available ammo per weapon */
+	struct bullet bs[NR_BULLETS];
+};
+
+#define MAX_POWERUPS                   2
+
+struct power_up {
+	uint8_t active;
+	uint8_t type;
+	uint8_t x;
+	uint8_t y;
+	uint8_t lane;
+	uint8_t frame;
+	uint8_t atime;
+	uint16_t timeout;
+};
+
+struct game_data {
+	struct menu menu;
+	struct player player;
+	enum game_states game_state;
+	struct enemy enemies[MAX_ENEMIES];
+	struct door door;
+	struct weapon_states ws;
+	struct power_up power_ups[MAX_POWERUPS];
+};
+
+static struct game_data gd;
+/*---------------------------------------------------------------------------
  * setup
  *---------------------------------------------------------------------------*/
 #ifdef __cplusplus
@@ -368,7 +484,6 @@ enum menu_states {
 	MENU_STATE_PLAY,
 	MENU_STATE_LOAD,
 	MENU_STATE_HELP,
-	MENU_STATE_INIT,
 };
 
 struct menu_data {
@@ -380,29 +495,6 @@ static const struct menu_data menu_item_xlate[] = {
 	[MENU_STATE_PLAY] = { .n_game_state = PROGRAM_RUN_GAME, .x = 19, },
 	[MENU_STATE_LOAD] = { .n_game_state = PROGRAM_LOAD_GAME, .x = 51, },
 	[MENU_STATE_HELP] = { .n_game_state = PROGRAM_SHOW_HELP, .x = 82, },
-};
-
-struct menu_drop {
-	uint8_t idx;
-	uint16_t stime; /* show time of next drop */
-	uint8_t atime; /* time till next frame */
-	uint8_t state:4; /* state of drop */
-	uint8_t frame:4; /* current frame of drop */
-	uint8_t x;
-	uint8_t y;
-};
-
-#define NR_OF_DROPS                           7
-
-struct menu {
-	uint8_t update;
-	uint8_t state;
-	struct menu_drop drop[NR_OF_DROPS];
-};
-
-static struct menu menu = {
-	.update = 0,
-	.state = MENU_STATE_INIT,
 };
 
 static const uint8_t menu_drop_x_locations[NR_OF_DROPS] = {
@@ -436,40 +528,39 @@ mainscreen(void)
 {
 	uint8_t game_state = PROGRAM_MAIN_MENU;
 	const struct menu_data *data;
-	uint8_t state = menu.state;
 	struct menu_drop *drop;
+	struct menu *menu = &gd.menu;
 	uint8_t i;
 
 	if (left()) {
-		if (menu.state == MENU_STATE_PLAY)
-			menu.state = MENU_STATE_HELP;
+		if (menu->state == MENU_STATE_PLAY)
+			menu->state = MENU_STATE_HELP;
 		else
-			menu.state--;
-		menu.update = 1;
+			menu->state--;
+		menu->update = 1;
 	} else if (right()) {
-		if (menu.state == MENU_STATE_HELP)
-			menu.state = MENU_STATE_PLAY;
+		if (menu->state == MENU_STATE_HELP)
+			menu->state = MENU_STATE_PLAY;
 		else
-			menu.state++;
-		menu.update = 1;
+			menu->state++;
+		menu->update = 1;
 	}
 
-	if (state == MENU_STATE_INIT) {
-		menu.update = 1;
+	if (!menu->initialized) {
+		menu->update = 1;
 		for (i = 0; i < NR_OF_DROPS; i++) {
-			drop = &menu.drop[i];
+			drop = &menu->drop[i];
 			drop->idx = i;
 			menu_drop_init(drop);
 		}
-		if (menu.state == state)
-			menu.state = MENU_STATE_PLAY;
+		menu->initialized = 1;
 	}
 
-	data = &menu_item_xlate[menu.state];
+	data = &menu_item_xlate[menu->state];
 	if (a())
 		game_state = data->n_game_state;
 
-	if (menu.update) {
+	if (menu->update) {
 		blit_image(0,
 			   0,
 			   mainscreen_img,
@@ -477,7 +568,7 @@ mainscreen(void)
 			   __flag_white);
 
 		for (i = 0; i < NR_OF_DROPS; i++) {
-			drop = &menu.drop[i];
+			drop = &menu->drop[i];
 			if (drop->stime)
 				continue;
 			if (drop->state != 2) {
@@ -493,10 +584,10 @@ mainscreen(void)
 
 		draw_hline(data->x, 51, 26);
 		draw_vline(data->x - 1, 52, 9);
-		menu.update = 0;
+		menu->update = 0;
 	}
 	for (i = 0; i < NR_OF_DROPS; i++) {
-		drop = &menu.drop[i];
+		drop = &menu->drop[i];
 
 		if (drop->stime) {
 			drop->stime--;
@@ -508,7 +599,7 @@ mainscreen(void)
 			continue;
 		}
 
-		menu.update = 1;
+		menu->update = 1;
 		if (drop->frame == 3 && drop->state != 2) {
 			drop->frame = 0;
 			drop->state++;
@@ -561,22 +652,12 @@ help(void)
 /*---------------------------------------------------------------------------
  * game handling
  *---------------------------------------------------------------------------*/
-static struct character_state {
-	int16_t life; /* remaining life of player */
-	uint8_t x; /* current x position of player */
-	uint8_t atime; /* nr of frames till next frame of sprite */
-	uint8_t frame:2; /* current frame of sprite */
-	uint8_t state:2; /* current player state */
-	uint8_t previous_state:2; /* previous player state */
-	uint8_t poison:1;
-	uint16_t poison_timeout;
-	int32_t score; /* current score */
-} cs;
-
 static inline void player_set_poison(void)
 {
-	cs.poison = 1;
-	cs.poison_timeout = 20 * FPS;
+	struct player *p = &gd.player;
+
+	p->poison = 1;
+	p->poison_timeout = 20 * FPS;
 }
 
 enum player_states {
@@ -601,16 +682,18 @@ static const uint8_t player_frame_offsets[PLAYER_MAX_STATES] = {
 
 static void player_set_state(uint8_t new_state)
 {
-	if (new_state != cs.state) {
-		cs.frame = 0;
-		cs.atime = player_timings[new_state];
+	struct player *p = &gd.player;
+
+	if (new_state != p->state) {
+		p->frame = 0;
+		p->atime = player_timings[new_state];
 	}
 
 	if (new_state != PLAYER_RESTS)
 		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 
-	cs.previous_state = cs.state;
-	cs.state = new_state;
+	p->previous_state = p->state;
+	p->state = new_state;
 }
 
 static void player_is_resting(void) {
@@ -619,55 +702,49 @@ static void player_is_resting(void) {
 
 static void update_player(int8_t dx, uint8_t throws)
 {
+	struct player *p = &gd.player;
+
 	/* update position */
 	if (dx < 0) {
 		player_set_state(PLAYER_L_MOVE);
-		if (cs.x > 0)
-			cs.x--;
+		if (p->x > 0)
+			p->x--;
 	}
 	if (dx > 0) {
 		player_set_state(PLAYER_R_MOVE);
-		if (cs.x < 116)
-			cs.x++;
+		if (p->x < 116)
+			p->x++;
 	}
 
 	/* XXX might introduce timeout to reduce fire rate */
-	if (throws && cs.state == PLAYER_RESTS)
-		player_set_state(cs.previous_state);
+	if (throws && p->state == PLAYER_RESTS)
+		player_set_state(p->previous_state);
 
 	/* update frames */
-	if (cs.atime == 0) {
-		cs.atime = player_timings[cs.state];
-		cs.frame++;
+	if (p->atime == 0) {
+		p->atime = player_timings[p->state];
+		p->frame++;
 	} else
-		cs.atime--;
+		p->atime--;
 
-	if (cs.poison) {
-		cs.poison_timeout--;
-		if (cs.poison_timeout == 0)
-			cs.poison = 0;
+	if (p->poison) {
+		p->poison_timeout--;
+		if (p->poison_timeout == 0)
+			p->poison = 0;
 	}
 }
 
 static void init_player(void)
 {
-	memset(&cs, 0, sizeof(cs));
-	cs.life = PLAYER_MAX_LIFE;
-	cs.x = 20;
+	struct player *p = &gd.player;
+
+	memset(p, 0, sizeof(*p));
+	p->life = PLAYER_MAX_LIFE;
+	p->x = 20;
 	/* setup timer for players resting animation */
 	setup_timer(TIMER_PLAYER_RESTS, player_is_resting);
 	start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 }
-
-enum game_states {
-	GAME_STATE_INIT = 0,
-	GAME_STATE_RUN_GAME,
-	GAME_STATE_OVER,
-	GAME_STATE_CLEANUP,
-};
-
-// XXX
-static enum game_states game_state = GAME_STATE_INIT;
 
 /*---------------------------------------------------------------------------
  * bullet handling
@@ -678,27 +755,6 @@ enum bullet_state {
 	BULLET_EFFECT,
 	BULLET_SPLASH,
 };
-
-struct bullet {
-	uint8_t x; /* x position of bullet */
-	uint8_t ys; /* y start position of the bullet */
-	uint8_t state:2;
-	uint8_t weapon:2;
-	uint8_t frame:2;
-	uint8_t lane:2;
-	uint8_t atime; /* nr of frames it take for the next animation frame */
-	uint8_t etime; /* nr of frames a weapon has effect on the ground */
-};
-
-static struct weapon_states {
-	uint8_t selected:3; /* selected weapon */
-	uint8_t previous:3; /* previous selected weapon */
-	uint8_t direction:1;
-	uint8_t stime;
-	int8_t icon_x;
-	uint8_t ammo[NR_WEAPONS]; /* available ammo per weapon */
-	struct bullet bs[NR_BULLETS];
-} ws;
 
 /* damage per bullet */
 static const uint8_t bullet_damage[NR_WEAPONS] = {1, 2, 3, 4};
@@ -721,22 +777,23 @@ static const uint8_t lane_y[3] = {52, 56, 62};
 static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 {
 	uint8_t b, x = 0;
-	struct bullet *bs = &ws.bs[0];
+	struct bullet *bs = &gd.ws.bs[0];
+	struct player *p = &gd.player;
 
-	if (ws.ammo[weapon] == 0)
+	if (gd.ws.ammo[weapon] == 0)
 		return 0;
 
-	if (cs.state != PLAYER_RESTS)
-		b = cs.state;
+	if (p->state != PLAYER_RESTS)
+		b = p->state;
 	else
-		b = cs.previous_state;
+		b = p->previous_state;
 
 	switch (b) {
 	case PLAYER_L_MOVE:
-		x = cs.x;
+		x = p->x;
 		break;
 	case PLAYER_R_MOVE:
-		x = cs.x + img_width(player_all_frames_img) -
+		x = p->x + img_width(player_all_frames_img) -
 		    img_width(water_bomb_air_img); /* TODO this might be different for other weapons */
 		break;
 	}
@@ -754,7 +811,7 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 		bs->atime = BULLET_FRAME_TIME;
 		bs->etime = etime[weapon];
 		bs->frame = 0;
-		ws.ammo[weapon]--;
+		gd.ws.ammo[weapon]--;
 		break;
 	}
 	return 1;
@@ -763,7 +820,7 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 static void update_bullets(void)
 {
 	uint8_t b, height;
-	struct bullet *bs = &ws.bs[0];
+	struct bullet *bs = &gd.ws.bs[0];
 
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
 		if (bs->state == BULLET_INACTIVE)
@@ -773,7 +830,7 @@ static void update_bullets(void)
 		if (bs->state >= BULLET_EFFECT) {
 			if (bs->etime == 0) {
 				bs->state = BULLET_INACTIVE;
-				ws.ammo[bs->weapon]++;
+				gd.ws.ammo[bs->weapon]++;
 			} else
 				bs->etime--;
 		} else {
@@ -796,7 +853,7 @@ static void update_bullets(void)
 static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
 	uint8_t b, damage = 0, hit;
-	struct bullet *bs = &ws.bs[0];
+	struct bullet *bs = &gd.ws.bs[0];
 
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
 		if (bs->state != BULLET_ACTIVE)
@@ -824,26 +881,28 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 
 void select_weapon(int8_t up_down)
 {
-	ws.previous = ws.selected;
-	if (cs.x < 64 - img_width(player_all_frames_img) / 2) {
-		ws.direction = 1;
-		ws.icon_x = WIDTH;
+	struct player *p = &gd.player;
+
+	gd.ws.previous = gd.ws.selected;
+	if (p->x < 64 - img_width(player_all_frames_img) / 2) {
+		gd.ws.direction = 1;
+		gd.ws.icon_x = WIDTH;
 	} else {
-		ws.direction = 0;
-		ws.icon_x = -img_width(weapons_img);
+		gd.ws.direction = 0;
+		gd.ws.icon_x = -img_width(weapons_img);
 	}
 	if (up_down > 0) {
 		/* select weapon downwards */
-		if (ws.selected == NR_WEAPONS - 1)
-			ws.selected = 0;
+		if (gd.ws.selected == NR_WEAPONS - 1)
+			gd.ws.selected = 0;
 		else
-			ws.selected++;
+			gd.ws.selected++;
 	} else {
 		/* select weapon upwards */
-		if (ws.selected == 0)
-			ws.selected = NR_WEAPONS - 1;
+		if (gd.ws.selected == 0)
+			gd.ws.selected = NR_WEAPONS - 1;
 		else
-			ws.selected--;
+			gd.ws.selected--;
 	}
 }
 
@@ -851,9 +910,9 @@ static void init_weapons(void)
 {
 	uint8_t i;
 
-	memset(&ws, 0, sizeof(ws));
+	memset(&gd.ws, 0, sizeof(gd.ws));
 	for (i = 0; i < NR_WEAPONS; i++)
-		ws.ammo[i] = max_ammo[i];
+		gd.ws.ammo[i] = max_ammo[i];
 }
 
 /*---------------------------------------------------------------------------
@@ -1014,46 +1073,13 @@ static const uint8_t *enemy_frame_reloads[ENEMY_MAX] = {
 	enemy_little_girl_frame_reloads,
 };
 
-struct enemy {
-	int8_t life;
-	int8_t x;
-	uint8_t dx;
-	uint8_t y;
-	uint8_t type:3;
-	uint8_t id:5;
-	uint8_t atime; /* nr of frames it take for the next animation frame */
-	uint8_t rtime; /* nr of frames it takes to rest */
-	uint8_t mtime; /* nr of frames it takes to move */
-	uint8_t damage;
-	uint8_t frame;
-	uint8_t lane:2;
-	uint8_t dlane:2;
-	uint8_t active:1;
-	uint8_t poisoned:3;
-	uint8_t poison_timeout;
-	uint8_t frame_reload;
-	uint8_t state;
-	uint8_t previous_state[4];
-	uint8_t pindex;
-	uint8_t sprite_offset;
-};
-
-struct door {
-	uint8_t under_attack:1;
-	struct enemy *attacker;
-	uint8_t boss_countdown;
-};
-
-static struct enemy enemies[MAX_ENEMIES];
-static struct door door;
-
 static void enemy_generate_random(struct enemy *e)
 {
 	uint8_t r = random8(100);
 	uint8_t id, type;
 
-	if (!door.boss_countdown) {
-		door.boss_countdown = KILLS_TILL_BOSS;
+	if (!gd.door.boss_countdown) {
+		gd.door.boss_countdown = KILLS_TILL_BOSS;
 		id = ENEMY_BOSS1;
 		type = ENEMY_BOSS;
 	} else if (r < 9) {
@@ -1117,7 +1143,7 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 static void spawn_new_enemies(void)
 {
 	uint8_t i, height;
-	struct enemy *e = &enemies[0];
+	struct enemy *e = &gd.enemies[0];
 
 	/* update and spawn enemies */
 	for (i = 0; i < MAX_ENEMIES; i++, e++) {
@@ -1175,7 +1201,8 @@ static void update_enemies(void)
 {
 	uint8_t damage;
 	uint8_t i, width, height;
-	struct enemy *e = &enemies[0];
+	struct enemy *e = &gd.enemies[0];
+	struct player *p = &gd.player;
 	struct enemy *a;
 
 	/* update and spawn enemies */
@@ -1199,19 +1226,19 @@ static void update_enemies(void)
 			}
 		}
 		if (damage) {
-			if (cs.poison)
+			if (p->poison)
 				e->poisoned = 4;
 			e->life -= damage; /* bullet damage */
 			if (e->life <= 0) {
-				if (door.attacker == e) {
-					door.attacker = NULL;
-					door.under_attack = 0;
+				if (gd.door.attacker == e) {
+					gd.door.attacker = NULL;
+					gd.door.under_attack = 0;
 				}
 				e->atime = FPS;
-				cs.score += enemy_score[e->id];
+				p->score += enemy_score[e->id];
 
-				if (cs.score < 0)
-					cs.score = 0;
+				if (p->score < 0)
+					p->score = 0;
 				enemy_set_state(e, ENEMY_DYING, 0);
 			} else {
 				if (e->state != ENEMY_EFFECT && e->state != ENEMY_SWEARING) {
@@ -1247,8 +1274,8 @@ static void update_enemies(void)
 			break;
 		case ENEMY_APPROACH_DOOR:
 			/* peaceful enemies will not reach this state */
-			a = door.attacker;
-			if (door.under_attack && a != e) {
+			a = gd.door.attacker;
+			if (gd.door.under_attack && a != e) {
 				if (e->type == ENEMY_BOSS) {
 					/* move away for the boss */
 					enemy_prepare_direction_change(a, img_width(enemy_sprites[a->id]));
@@ -1261,8 +1288,8 @@ static void update_enemies(void)
 					break;
 				}
 			}
-			door.under_attack = 1;
-			door.attacker = e;
+			gd.door.under_attack = 1;
+			gd.door.attacker = e;
 			e->dlane = DOOR_LANE;
 			if (e->lane != e->dlane) {
 				e->dx = e->x - abs(lane_y[e->lane] - lane_y[e->dlane]);
@@ -1311,7 +1338,7 @@ static void update_enemies(void)
 		case ENEMY_ATTACKING:
 			/* do door damage */
 			if (e->frame == (e->frame_reload - 1) && e->atime == 0) {
-				cs.life -= enemy_damage[e->id];
+				p->life -= enemy_damage[e->id];
 				enemy_set_state(e, ENEMY_RESTING, 1);
 			}
 			break;
@@ -1341,7 +1368,7 @@ static void update_enemies(void)
 			if (e->y == 0) {
 				e->active = 0;
 				if (e->id != ENEMY_BOSS)
-					door.boss_countdown--;
+					gd.door.boss_countdown--;
 			} else
 				e->y--;
 			break;
@@ -1368,8 +1395,8 @@ static void update_enemies(void)
 
 static void init_enemies(void)
 {
-	memset(&door, 0, sizeof(door));
-	memset(enemies, 0, sizeof(enemies));
+	memset(&gd.door, 0, sizeof(gd.door));
+	memset(gd.enemies, 0, sizeof(gd.enemies));
 
 	/* setup timer for enemy spawning */
 	setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
@@ -1388,19 +1415,6 @@ enum power_up_type {
 	POWER_UP_MAX,
 };
 
-struct power_up {
-	uint8_t active;
-	uint8_t type;
-	uint8_t x;
-	uint8_t y;
-	uint8_t lane;
-	uint8_t frame;
-	uint8_t atime;
-	uint16_t timeout;
-};
-
-static struct power_up power_ups[MAX_POWERUPS];
-
 static void spawn_new_powerup(void)
 {
 	uint8_t i, width, height;
@@ -1410,7 +1424,7 @@ static void spawn_new_powerup(void)
 	height = img_height(powerups_img);
 
 	for (i = 0; i < MAX_POWERUPS; i++) {
-		p = &power_ups[i];
+		p = &gd.power_ups[i];
 		if (p->active)
 			continue;
 		p->active = 1;
@@ -1429,55 +1443,56 @@ static void spawn_new_powerup(void)
 static void update_powerups(void)
 {
 	uint8_t i, width, height;
-	struct power_up *p;
+	struct power_up *pu;
+	struct player *p = &gd.player;
 
 	width = img_width(powerups_img);
 	height = img_height(powerups_img);
 
 	for (i = 0; i < MAX_POWERUPS; i++) {
-		p = &power_ups[i];
-		switch (p->active) {
+		pu = &gd.power_ups[i];
+		switch (pu->active) {
 		case 1:
-			p->timeout--;
-			if (!p->timeout) {
-				p->active = 0;
+			pu->timeout--;
+			if (!pu->timeout) {
+				pu->active = 0;
 				start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
 				continue;
 			}
 			/* check if hit by player */
-			if (get_bullet_damage(p->lane, p->x, p->y, width, height)) {
-				p->active++;
-				switch (p->type) {
+			if (get_bullet_damage(pu->lane, pu->x, pu->y, width, height)) {
+				pu->active++;
+				switch (pu->type) {
 				case POWER_UP_LIFE:
-					cs.life += 32;
-					if (cs.life > PLAYER_MAX_LIFE)
-						cs.life = PLAYER_MAX_LIFE;
+					p->life += 32;
+					if (p->life > PLAYER_MAX_LIFE)
+						p->life = PLAYER_MAX_LIFE;
 					break;
 				case POWER_UP_POISON:
 					player_set_poison();
 					break;
 				case POWER_UP_SCORE:
-					cs.score += 100;
+					p->score += 100;
 					break;
 				}
 			}
 
-			if (p->atime) {
-				p->atime--;
+			if (pu->atime) {
+				pu->atime--;
 				continue;
 			}
 
-			p->atime = 2;
-			p->frame++;
-			if (p->frame == 4)
-				p->frame = 0;
+			pu->atime = 2;
+			pu->frame++;
+			if (pu->frame == 4)
+				pu->frame = 0;
 			break;
 		case 2:
-			if (p->y == 0) {
+			if (pu->y == 0) {
 				start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
-				p->active = 0;
+				pu->active = 0;
 			} else
-				p->y--;
+				pu->y--;
 			break;
 		default:
 			break;
@@ -1487,6 +1502,7 @@ static void update_powerups(void)
 
 static void init_powerups(void)
 {
+	memset(&gd.power_ups, 0, sizeof(gd.power_ups));
 	setup_timer(TIMER_POWERUP_SPAWN, spawn_new_powerup);
 	start_timer(TIMER_POWERUP_SPAWN, random8(8) * FPS + ENEMIES_SPAWN_RATE);
 	setup_timer(TIMER_POWERUP_SPAWN + 1, spawn_new_powerup);
@@ -1503,20 +1519,20 @@ static void update_scene(void)
 	/* update scene animations */
 
 	/* show selected weapon icon */
-	if (ws.selected != ws.previous) {
-		if (ws.direction) {
-			if (ws.icon_x == WIDTH - img_width(weapons_img))
-				ws.previous = ws.selected;
+	if (gd.ws.selected != gd.ws.previous) {
+		if (gd.ws.direction) {
+			if (gd.ws.icon_x == WIDTH - img_width(weapons_img))
+				gd.ws.previous = gd.ws.selected;
 			else {
-				ws.stime = FPS;
-				ws.icon_x-=2;
+				gd.ws.stime = FPS;
+				gd.ws.icon_x-=2;
 			}
 		} else {
-			if (ws.icon_x == 0)
-				ws.previous = ws.selected;
+			if (gd.ws.icon_x == 0)
+				gd.ws.previous = gd.ws.selected;
 			else {
-				ws.stime = FPS;
-				ws.icon_x+=2;
+				gd.ws.stime = FPS;
+				gd.ws.icon_x+=2;
 			}
 		}
 	}
@@ -1531,7 +1547,9 @@ static void update_scene(void)
  *---------------------------------------------------------------------------*/
 static int check_game_over(void)
 {
-	if (cs.life <= 0)
+	struct player *p = &gd.player;
+
+	if (p->life <= 0)
 		return 1;
 	return 0;
 }
@@ -1574,14 +1592,16 @@ static void draw_number(uint8_t x, uint8_t y, int32_t n, uint32_t divider, uint8
 
 static void draw_player(void)
 {
-	blit_image_frame(cs.x,
+	struct player *p = &gd.player;
+
+	blit_image_frame(p->x,
 			 0,
 			 player_all_frames_img,
 			 NULL,
-			 player_frame_offsets[cs.state] + cs.frame,
+			 player_frame_offsets[p->state] + p->frame,
 			 __flag_none);
-	if (cs.poison)
-		blit_image(cs.x + img_width(player_all_frames_img),
+	if (p->poison)
+		blit_image(p->x + img_width(player_all_frames_img),
 			   0,
 			   poison_damage_img,
 			   NULL,
@@ -1591,7 +1611,7 @@ static void draw_player(void)
 static void draw_enemies(void)
 {
 	uint8_t i, show;
-	struct enemy *e = &enemies[0];
+	struct enemy *e = &gd.enemies[0];
 
 	for (i = 0; i < MAX_ENEMIES; i++, e++) {
 		if (!e->active)
@@ -1627,7 +1647,7 @@ static void draw_powerups(void)
 	struct power_up *p;
 
 	for (i = 0; i < MAX_POWERUPS; i++) {
-		p = &power_ups[i];
+		p = &gd.power_ups[i];
 		switch (p->active) {
 		case 1:
 			blit_image_frame(p->x,
@@ -1660,10 +1680,11 @@ static void draw_powerups(void)
 
 static void draw_scene(void)
 {
+	struct player *p = &gd.player;
 	int16_t life_level;
 
 	/* draw current life */
-	life_level = (cs.life * 4 + PLAYER_MAX_LIFE - 1) / PLAYER_MAX_LIFE;
+	life_level = (p->life * 4 + PLAYER_MAX_LIFE - 1) / PLAYER_MAX_LIFE;
 	if (life_level > 2) {
 		draw_rect(0, 57, 15, 7);
 	} else {
@@ -1678,14 +1699,14 @@ static void draw_scene(void)
 				 3);
 	}
 
-	if (ws.stime) {
-		blit_image_frame(ws.icon_x,
+	if (gd.ws.stime) {
+		blit_image_frame(gd.ws.icon_x,
 				 0,
 				 weapons_img,
 				 NULL,
-				 ws.selected,
+				 gd.ws.selected,
 				 __flag_none);
-		ws.stime--;
+		gd.ws.stime--;
 	}
 
 	/* draw weather animation */
@@ -1703,7 +1724,7 @@ static void draw_scene(void)
 static void draw_bullets(void)
 {
 	uint8_t b;
-	struct bullet *bs = &ws.bs[0];
+	struct bullet *bs = &gd.ws.bs[0];
 
 	/* create a new bullet, do nothing if not possible */
 	for (b = 0; b < NR_BULLETS; b++, bs++) {
@@ -1733,17 +1754,19 @@ static void draw_bullets(void)
 
 static void draw_score(void)
 {
-	draw_number(100, 59, cs.score, 1000000, 1);
+	struct player *p = &gd.player;
+
+	draw_number(100, 59, p->score, 1000000, 1);
 }
 
 static uint8_t
 run(void)
 {
-	uint8_t i, throws = 0;
+	uint8_t throws = 0;
 	int8_t dx = 0;
 	uint8_t rstate = PROGRAM_RUN_GAME;
 
-	switch (game_state) {
+	switch (gd.game_state) {
 	case GAME_STATE_INIT:
 		init_timers();
 		init_player();
@@ -1756,18 +1779,18 @@ run(void)
 		setup_timer(TIMER_500MS, timer_500ms_counter);
 		start_timer(TIMER_500MS, FPS / 2);
 
-		game_state = GAME_STATE_RUN_GAME;
+		gd.game_state = GAME_STATE_RUN_GAME;
 		break;
 	case GAME_STATE_RUN_GAME:
 		/* check for game over */
 		if (check_game_over()) {
-			game_state = GAME_STATE_OVER;
+			gd.game_state = GAME_STATE_OVER;
 			break;
 		}
 
 		/* back to menu */
 		if (up() && a()) {
-			game_state = GAME_STATE_CLEANUP;
+			gd.game_state = GAME_STATE_CLEANUP;
 			break;
 		}
 
@@ -1785,11 +1808,11 @@ run(void)
 		}
 		if (a()) {
 			/* throws bullet to the lower lane of the street */
-			throws = new_bullet(LOWER_LANE, ws.selected);
+			throws = new_bullet(LOWER_LANE, gd.ws.selected);
 		}
 		if (b()) {
 			/* throws bullet to the upper lane of the street */
-			throws = new_bullet(UPPER_LANE, ws.selected);
+			throws = new_bullet(UPPER_LANE, gd.ws.selected);
 		}
 
 		/* update bullets */
@@ -1820,12 +1843,12 @@ run(void)
 		break;
 	case GAME_STATE_OVER:
 		/* TODO */
-		game_state = GAME_STATE_OVER;
+		gd.game_state = GAME_STATE_OVER;
 		break;
 	case GAME_STATE_CLEANUP:
 		init_timers();
 		rstate = PROGRAM_MAIN_MENU;
-		game_state = GAME_STATE_INIT;
+		gd.game_state = GAME_STATE_INIT;
 		break;
 	}
 	return rstate;

@@ -41,6 +41,7 @@ enum program_states {
 	PROGRAM_LOAD_GAME,
 	PROGRAM_RUN_GAME,
 	PROGRAM_SHOW_HELP,
+	PROGRAM_STATE_MAX,
 };
 
 /*---------------------------------------------------------------------------
@@ -430,7 +431,7 @@ static void menu_drop_init(struct menu_drop *drop)
 	drop->y = menu_drop_y_locations[drop->idx];
 }
 
-static int
+static uint8_t
 mainscreen(void)
 {
 	uint8_t game_state = PROGRAM_MAIN_MENU;
@@ -545,13 +546,13 @@ mainscreen(void)
 	return game_state;
 }
 
-static int
+static uint8_t
 load(void)
 {
 	return PROGRAM_MAIN_MENU;
 }
 
-static int
+static uint8_t
 help(void)
 {
 	return PROGRAM_MAIN_MENU;
@@ -1701,12 +1702,12 @@ static void draw_score(void)
 	draw_number(100, 59, cs.score, 1000000, 1);
 }
 
-static int
+static uint8_t
 run(void)
 {
 	uint8_t i, throws = 0;
 	int8_t dx = 0;
-	int rstate = PROGRAM_RUN_GAME;
+	uint8_t rstate = PROGRAM_RUN_GAME;
 
 	switch (game_state) {
 	case GAME_STATE_INIT:
@@ -1815,8 +1816,16 @@ run(void)
 /*---------------------------------------------------------------------------
  * loop
  *---------------------------------------------------------------------------*/
+typedef uint8_t (*state_fn_t)(void);
 /* state of the program */
 static uint8_t main_state = PROGRAM_MAIN_MENU;
+
+static const state_fn_t main_state_fn[PROGRAM_STATE_MAX] = {
+	mainscreen,
+	load,
+	run,
+	help,
+};
 
 #ifdef __cplusplus
 extern "C"
@@ -1829,20 +1838,8 @@ loop(void)
 	if (!next_frame())
 		return;
 
-	switch (main_state) {
-	case PROGRAM_MAIN_MENU:
-		main_state = mainscreen();
-		break;
-	case PROGRAM_LOAD_GAME:
-		main_state = load();
-		break;
-	case PROGRAM_RUN_GAME:
-		main_state = run();
-		break;
-	case PROGRAM_SHOW_HELP:
-		main_state = help();
-		break;
-	}
+	main_state = main_state_fn[main_state]();
+
 	finish_frame();
 }
 

@@ -1625,9 +1625,6 @@ static void draw_scene(void)
 {
 	int16_t life_level;
 
-	/* draw main scene */
-	blit_image(0, 0, game_background_img, NULL, __flag_none);
-
 	/* draw current life */
 	life_level = (cs.life * 4 + PLAYER_MAX_LIFE - 1) / PLAYER_MAX_LIFE;
 	if (life_level > 2) {
@@ -1787,8 +1784,8 @@ run(void)
 		/* update player */
 		update_player(dx, throws);
 
-		/* draw scene */
-		draw_scene();
+		/* draw main scene */
+		blit_image(0, 0, game_background_img, NULL, __flag_none);
 		/* draw player */
 		draw_player();
 		/* draw powerups */
@@ -1799,6 +1796,8 @@ run(void)
 		draw_bullets();
 		/* draw new score */
 		draw_score();
+		/* draw scene */
+		draw_scene();
 		break;
 	case GAME_STATE_OVER:
 		/* TODO */

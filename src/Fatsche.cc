@@ -406,6 +406,7 @@ struct enemy {
 
 struct door {
 	uint8_t under_attack:1;
+	uint8_t boss:1;
 	struct enemy *attacker;
 	uint8_t boss_countdown;
 };
@@ -1087,8 +1088,9 @@ static void enemy_generate_random(struct enemy *e)
 	uint8_t r = random8(100);
 	uint8_t id, type;
 
-	if (!gd.door.boss_countdown) {
+	if (!gd.door.boss_countdown && !gd.door.boss) {
 		gd.door.boss_countdown = KILLS_TILL_BOSS;
+		gd.door.boss = 1;
 		id = ENEMY_BOSS1;
 		type = ENEMY_BOSS;
 	} else if (r < 9) {
@@ -1380,8 +1382,10 @@ static void update_enemies(void)
 				break;
 			if (e->y == 0) {
 				e->active = 0;
-				if (e->id != ENEMY_BOSS)
+				if (e->type != ENEMY_BOSS && !gd.door.boss)
 					gd.door.boss_countdown--;
+				if (e->type == ENEMY_BOSS)
+					gd.door.boss = 0;
 			} else
 				e->y--;
 			break;

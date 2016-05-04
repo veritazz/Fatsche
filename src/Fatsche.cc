@@ -649,6 +649,16 @@ static void update_player(int8_t dx, uint8_t throws)
 	}
 }
 
+static void init_player(void)
+{
+	memset(&cs, 0, sizeof(cs));
+	cs.life = PLAYER_MAX_LIFE;
+	cs.x = 20;
+	/* setup timer for players resting animation */
+	setup_timer(TIMER_PLAYER_RESTS, player_is_resting);
+	start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
+}
+
 enum game_states {
 	GAME_STATE_INIT = 0,
 	GAME_STATE_RUN_GAME,
@@ -835,6 +845,15 @@ void select_weapon(int8_t up_down)
 		else
 			ws.selected--;
 	}
+}
+
+static void init_weapons(void)
+{
+	uint8_t i;
+
+	memset(&ws, 0, sizeof(ws));
+	for (i = 0; i < NR_WEAPONS; i++)
+		ws.ammo[i] = max_ammo[i];
 }
 
 /*---------------------------------------------------------------------------
@@ -1347,6 +1366,16 @@ static void update_enemies(void)
 	}
 }
 
+static void init_enemies(void)
+{
+	memset(&door, 0, sizeof(door));
+	memset(enemies, 0, sizeof(enemies));
+
+	/* setup timer for enemy spawning */
+	setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
+	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
+}
+
 /*---------------------------------------------------------------------------
  * powerup handling
  *---------------------------------------------------------------------------*/
@@ -1454,6 +1483,14 @@ static void update_powerups(void)
 			break;
 		}
 	}
+}
+
+static void init_powerups(void)
+{
+	setup_timer(TIMER_POWERUP_SPAWN, spawn_new_powerup);
+	start_timer(TIMER_POWERUP_SPAWN, random8(8) * FPS + ENEMIES_SPAWN_RATE);
+	setup_timer(TIMER_POWERUP_SPAWN + 1, spawn_new_powerup);
+	start_timer(TIMER_POWERUP_SPAWN + 1, random8(8) * FPS + ENEMIES_SPAWN_RATE);
 }
 
 /*---------------------------------------------------------------------------
@@ -1709,33 +1746,15 @@ run(void)
 	switch (game_state) {
 	case GAME_STATE_INIT:
 		init_timers();
-		/* init character state */
-		cs.life = PLAYER_MAX_LIFE;
-		cs.x = 20;
-		cs.frame = 0;
-		cs.score = 0;
-		/* setup timer for players resting animation */
-		setup_timer(TIMER_PLAYER_RESTS, player_is_resting);
-		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
-		/* init weapon states */
-		memset(&ws, 0, sizeof(ws));
-		for (i = 0; i < NR_WEAPONS; i++)
-			ws.ammo[i] = max_ammo[i];
-		/* setup timer for enemy spawning */
-		setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
-		start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
-		/* setup timer for enemy spawning */
-		setup_timer(TIMER_POWERUP_SPAWN, spawn_new_powerup);
-		start_timer(TIMER_POWERUP_SPAWN, random8(8) * FPS + ENEMIES_SPAWN_RATE);
-		setup_timer(TIMER_POWERUP_SPAWN + 1, spawn_new_powerup);
-		start_timer(TIMER_POWERUP_SPAWN + 1, random8(8) * FPS + ENEMIES_SPAWN_RATE);
+		init_player();
+		init_weapons();
+		init_enemies();
+		init_powerups();
+
 		/* setup general purpose 500ms counting timer */
 		timer_500ms_ticks = 0;
 		setup_timer(TIMER_500MS, timer_500ms_counter);
 		start_timer(TIMER_500MS, FPS / 2);
-
-		memset(&door, 0, sizeof(door));
-		door.boss_countdown = KILLS_TILL_BOSS;
 
 		game_state = GAME_STATE_RUN_GAME;
 		break;

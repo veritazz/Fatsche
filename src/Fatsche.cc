@@ -164,7 +164,8 @@ static void init_timers(void)
 
 static void run_timers(void)
 {
-	for (uint8_t t = 0; t < TIMER_MAX; t++) {
+	uint8_t t = 0;
+	do {
 		if (!timers[t].active)
 			continue;
 		if (timers[t].timeout == 0) {
@@ -173,7 +174,7 @@ static void run_timers(void)
 				timers[t].fn();
 		}
 		timers[t].timeout--;
-	}
+	} while (++t < TIMER_MAX);
 }
 
 static void setup_timer(uint8_t id, timeout_fn fn)
@@ -548,11 +549,12 @@ mainscreen(void)
 
 	if (!menu->initialized) {
 		menu->update = 1;
-		for (i = 0; i < NR_OF_DROPS; i++) {
+		i = 0;
+		do {
 			drop = &menu->drop[i];
 			drop->idx = i;
 			menu_drop_init(drop);
-		}
+		} while (++i < NR_OF_DROPS);
 		menu->initialized = 1;
 	}
 
@@ -567,7 +569,8 @@ mainscreen(void)
 			   NULL,
 			   __flag_white);
 
-		for (i = 0; i < NR_OF_DROPS; i++) {
+		i = 0;
+		do {
 			drop = &menu->drop[i];
 			if (drop->stime)
 				continue;
@@ -580,13 +583,14 @@ mainscreen(void)
 						 __flag_white);
 			} else
 				draw_rect(drop->x, drop->y + 4, 2, 2);
-		}
+		} while (++i < NR_OF_DROPS);
 
 		draw_hline(data->x, 51, 26);
 		draw_vline(data->x - 1, 52, 9);
 		menu->update = 0;
 	}
-	for (i = 0; i < NR_OF_DROPS; i++) {
+	i = 0;
+	do {
 		drop = &menu->drop[i];
 
 		if (drop->stime) {
@@ -632,7 +636,7 @@ mainscreen(void)
 		}
 		drop->atime = menu_drop_atime[drop->state];
 		drop->frame++;
-	}
+	} while (++i < NR_OF_DROPS);
 
 	return game_state;
 }
@@ -777,7 +781,7 @@ static const uint8_t lane_y[3] = {52, 56, 62};
 static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 {
 	uint8_t b, x = 0;
-	struct bullet *bs = &gd.ws.bs[0];
+	struct bullet *bs;
 	struct player *p = &gd.player;
 
 	if (gd.ws.ammo[weapon] == 0)
@@ -799,7 +803,9 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 	}
 
 	/* create a new bullet, do nothing if not possible */
-	for (b = 0; b < NR_BULLETS; b++, bs++) {
+	b = 0;
+	do {
+		bs = &gd.ws.bs[b];
 		if (bs->state != BULLET_INACTIVE)
 			continue;
 
@@ -813,16 +819,17 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 		bs->frame = 0;
 		gd.ws.ammo[weapon]--;
 		break;
-	}
+	} while (++b < NR_BULLETS);
 	return 1;
 }
 
 static void update_bullets(void)
 {
-	uint8_t b, height;
-	struct bullet *bs = &gd.ws.bs[0];
+	uint8_t b = 0, height;
+	struct bullet *bs;
 
-	for (b = 0; b < NR_BULLETS; b++, bs++) {
+	do {
+		bs = &gd.ws.bs[b];
 		if (bs->state == BULLET_INACTIVE)
 			continue;
 
@@ -847,15 +854,16 @@ static void update_bullets(void)
 			bs->frame++;
 		} else
 			bs->atime--;
-	}
+	} while (++b < NR_BULLETS);
 }
 
 static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
-	uint8_t b, damage = 0, hit;
-	struct bullet *bs = &gd.ws.bs[0];
+	uint8_t b = 0, damage = 0, hit;
+	struct bullet *bs;
 
-	for (b = 0; b < NR_BULLETS; b++, bs++) {
+	do {
+		bs = &gd.ws.bs[b];
 		if (bs->state != BULLET_ACTIVE)
 			continue;
 		if (bs->lane != lane)
@@ -874,7 +882,7 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 			bs->state = BULLET_SPLASH;
 			bs->etime = FPS / 4;
 		}
-	}
+	} while (++b < NR_BULLETS);
 
 	return damage;
 }
@@ -908,11 +916,12 @@ void select_weapon(int8_t up_down)
 
 static void init_weapons(void)
 {
-	uint8_t i;
+	uint8_t i = 0;
 
 	memset(&gd.ws, 0, sizeof(gd.ws));
-	for (i = 0; i < NR_WEAPONS; i++)
+	do {
 		gd.ws.ammo[i] = max_ammo[i];
+	} while (++i < NR_WEAPONS);
 }
 
 /*---------------------------------------------------------------------------
@@ -1142,11 +1151,12 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 
 static void spawn_new_enemies(void)
 {
-	uint8_t i, height;
-	struct enemy *e = &gd.enemies[0];
+	uint8_t i = 0, height;
+	struct enemy *e;
 
 	/* update and spawn enemies */
-	for (i = 0; i < MAX_ENEMIES; i++, e++) {
+	do {
+		e = &gd.enemies[i];
 		if (e->active)
 			continue;
 		memset(e, 0, sizeof(*e));
@@ -1164,7 +1174,8 @@ static void spawn_new_enemies(void)
 		enemy_set_state(e, ENEMY_WALKING_LEFT, 0);
 		enemy_set_state(e, ENEMY_WALKING_LEFT, 1);
 		break;
-	}
+	} while (++i < MAX_ENEMIES);
+
 	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
 
 }
@@ -1200,15 +1211,17 @@ static void enemy_prepare_direction_change(struct enemy *e, uint8_t width)
 static void update_enemies(void)
 {
 	uint8_t damage;
-	uint8_t i, width, height;
-	struct enemy *e = &gd.enemies[0];
+	uint8_t i = 0, width, height;
+	struct enemy *e;
 	struct player *p = &gd.player;
 	struct enemy *a;
 
 	/* update and spawn enemies */
-	for (i = 0; i < MAX_ENEMIES; i++, e++) {
+	do {
+		e = &gd.enemies[i];
 		if (!e->active)
 			continue;
+
 		width = img_width(enemy_sprites[e->id]);
 		height = img_height(enemy_sprites[e->id]);
 		/* check if hit by bullet */
@@ -1390,13 +1403,14 @@ static void update_enemies(void)
 				e->mtime = 0;
 		} else
 			e->mtime--;
-	}
+	} while (++i < MAX_ENEMIES);
 }
 
 static void init_enemies(void)
 {
 	memset(&gd.door, 0, sizeof(gd.door));
 	memset(gd.enemies, 0, sizeof(gd.enemies));
+	gd.door.boss_countdown = KILLS_TILL_BOSS;
 
 	/* setup timer for enemy spawning */
 	setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
@@ -1417,13 +1431,13 @@ enum power_up_type {
 
 static void spawn_new_powerup(void)
 {
-	uint8_t i, width, height;
+	uint8_t i = 0, width, height;
 	struct power_up *p;
 
 	width = img_width(powerups_img);
 	height = img_height(powerups_img);
 
-	for (i = 0; i < MAX_POWERUPS; i++) {
+	do {
 		p = &gd.power_ups[i];
 		if (p->active)
 			continue;
@@ -1437,19 +1451,19 @@ static void spawn_new_powerup(void)
 		/* make life and poison less often */
 		p->type = random8(POWER_UP_MAX);
 		break;
-	}
+	} while (++i < MAX_POWERUPS);
 }
 
 static void update_powerups(void)
 {
-	uint8_t i, width, height;
+	uint8_t i = 0, width, height;
 	struct power_up *pu;
 	struct player *p = &gd.player;
 
 	width = img_width(powerups_img);
 	height = img_height(powerups_img);
 
-	for (i = 0; i < MAX_POWERUPS; i++) {
+	do {
 		pu = &gd.power_ups[i];
 		switch (pu->active) {
 		case 1:
@@ -1497,7 +1511,7 @@ static void update_powerups(void)
 		default:
 			break;
 		}
-	}
+	} while (++i < MAX_POWERUPS);
 }
 
 static void init_powerups(void)
@@ -1610,10 +1624,11 @@ static void draw_player(void)
 
 static void draw_enemies(void)
 {
-	uint8_t i, show;
-	struct enemy *e = &gd.enemies[0];
+	uint8_t i = 0, show;
+	struct enemy *e;
 
-	for (i = 0; i < MAX_ENEMIES; i++, e++) {
+	do {
+		e = &gd.enemies[i];
 		if (!e->active)
 			continue;
 		show = 0;
@@ -1638,15 +1653,15 @@ static void draw_enemies(void)
 					 e->frame + e->sprite_offset,
 					 __flag_none);
 		}
-	}
+	} while (++i < MAX_ENEMIES);
 }
 
 static void draw_powerups(void)
 {
-	uint8_t i, number = 0;
+	uint8_t i = 0, number;
 	struct power_up *p;
 
-	for (i = 0; i < MAX_POWERUPS; i++) {
+	do {
 		p = &gd.power_ups[i];
 		switch (p->active) {
 		case 1:
@@ -1664,6 +1679,7 @@ static void draw_powerups(void)
 				number = 32;
 				break;
 			case POWER_UP_POISON:
+				number = 0;
 				break;
 			case POWER_UP_SCORE:
 				number = 100;
@@ -1675,7 +1691,7 @@ static void draw_powerups(void)
 		default:
 			break;
 		}
-	}
+	} while (++i < MAX_POWERUPS);
 }
 
 static void draw_scene(void)
@@ -1723,11 +1739,12 @@ static void draw_scene(void)
 
 static void draw_bullets(void)
 {
-	uint8_t b;
-	struct bullet *bs = &gd.ws.bs[0];
+	uint8_t b = 0;
+	struct bullet *bs;
 
 	/* create a new bullet, do nothing if not possible */
-	for (b = 0; b < NR_BULLETS; b++, bs++) {
+	do {
+		bs = &gd.ws.bs[b];
 		switch (bs->state) {
 		case BULLET_EFFECT:
 		case BULLET_SPLASH:
@@ -1749,7 +1766,7 @@ static void draw_bullets(void)
 		default:
 			break;
 		}
-	}
+	} while (++b < NR_BULLETS);
 }
 
 static void draw_score(void)

@@ -1223,6 +1223,7 @@ static void update_enemies(void)
 	uint8_t i = 0, width, height;
 	struct enemy *e;
 	struct player *p = &gd.player;
+	struct door *d = &gd.door;
 	struct enemy *a;
 
 	/* update and spawn enemies */
@@ -1253,13 +1254,13 @@ static void update_enemies(void)
 				e->poisoned = 4;
 			e->life -= damage; /* bullet damage */
 			if (e->life <= 0) {
-				if (gd.door.attacker == e) {
-					gd.door.attacker = NULL;
-					gd.door.under_attack = 0;
+				if (d->attacker == e) {
+					d->attacker = NULL;
+					d->under_attack = 0;
 				}
 				e->atime = FPS;
-				p->score += enemy_score[e->id];
 
+				p->score += enemy_score[e->id];
 				if (p->score < 0)
 					p->score = 0;
 				enemy_set_state(e, ENEMY_DYING, 0);
@@ -1297,8 +1298,8 @@ static void update_enemies(void)
 			break;
 		case ENEMY_APPROACH_DOOR:
 			/* peaceful enemies will not reach this state */
-			a = gd.door.attacker;
-			if (gd.door.under_attack && a != e) {
+			a = d->attacker;
+			if (d->under_attack && a != e) {
 				if (e->type == ENEMY_BOSS) {
 					/* move away for the boss */
 					enemy_prepare_direction_change(a, img_width(enemy_sprites[a->id]));
@@ -1311,8 +1312,8 @@ static void update_enemies(void)
 					break;
 				}
 			}
-			gd.door.under_attack = 1;
-			gd.door.attacker = e;
+			d->under_attack = 1;
+			d->attacker = e;
 			e->dlane = DOOR_LANE;
 			if (e->lane != e->dlane) {
 				e->dx = e->x - abs(lane_y[e->lane] - lane_y[e->dlane]);
@@ -1404,10 +1405,10 @@ static void update_enemies(void)
 				break;
 			if (e->y == 0) {
 				e->active = 0;
-				if (e->type != ENEMY_BOSS && !gd.door.boss)
-					gd.door.boss_countdown--;
+				if (e->type != ENEMY_BOSS && !d->boss)
+					d->boss_countdown--;
 				if (e->type == ENEMY_BOSS)
-					gd.door.boss = 0;
+					d->boss = 0;
 			} else
 				e->y--;
 			break;

@@ -1121,6 +1121,8 @@ static uint8_t enemy_pop_state(struct enemy *e)
 	return e->previous_state[e->pindex];
 }
 
+/* TODO create unified push/pop state functions */
+
 static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 {
 	const uint8_t *so = enemy_sprite_offsets[e->id];
@@ -1129,6 +1131,7 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 		enemy_push_state(e);
 
 	/* TODO do this by type so the tables can be shorter */
+	/* FIXME: super strange */
 	switch (e->state) {
 	case ENEMY_CHANGE_LANE:
 	case ENEMY_MOVE_TO_UPPER_LANE:
@@ -1179,7 +1182,6 @@ static void spawn_new_enemies(void)
 	} while (++i < MAX_ENEMIES);
 
 	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
-
 }
 
 static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
@@ -1208,6 +1210,11 @@ static void enemy_prepare_direction_change(struct enemy *e, uint8_t width)
 {
 	e->dlane = 1 + random8(2);
 	e->dx = 1 + e->x + random8(WIDTH - e->x - width - abs(lane_y[e->lane] - lane_y[e->dlane]));
+}
+
+static uint8_t enemy_pee_pee_done(struct enemy *e)
+{
+	return 1;
 }
 
 static void update_enemies(void)
@@ -1241,6 +1248,7 @@ static void update_enemies(void)
 			}
 		}
 		if (damage) {
+			/* check if enemy gets poisoned */
 			if (p->poison)
 				e->poisoned = 4;
 			e->life -= damage; /* bullet damage */
@@ -1333,6 +1341,10 @@ static void update_enemies(void)
 				e->rtime--;
 			break;
 		case ENEMY_CHANGE_LANE:
+			/* FIXME: use function here:
+			 * if (enemy_change_lane())
+			 *   enemy_set_state(e, enemy_pop_state(e), 0);
+			 */
 			if (e->lane != e->dlane) {
 				if (e->lane > e->dlane)
 					enemy_set_state(e, ENEMY_MOVE_TO_UPPER_LANE, 1);
@@ -1341,6 +1353,7 @@ static void update_enemies(void)
 			} else
 				enemy_set_state(e, enemy_pop_state(e), 0);
 			break;
+			/* TODO remove these */
 		case ENEMY_MOVE_TO_UPPER_LANE:
 		case ENEMY_MOVE_TO_LOWER_LANE:
 			if (e->lane != e->dlane)
@@ -1358,15 +1371,24 @@ static void update_enemies(void)
 			}
 			break;
 		case ENEMY_SWEARING:
-			if (e->frame == e->frame_reload - 1) {
-				if (e->rtime == 0) {
-					e->rtime = enemy_rtime[e->id];
+			switch (e->type)  {
+			case ENEMY_VICIOUS:
+				if (enemy_pee_pee_done(e))
 					enemy_set_state(e, enemy_pop_state(e), 0);
-				} else
-					e->rtime--;
+				break;
+			case ENEMY_PEACEFUL:
+				if (e->frame == e->frame_reload - 1) {
+					if (e->rtime == 0) {
+						e->rtime = enemy_rtime[e->id];
+						enemy_set_state(e, enemy_pop_state(e), 0);
+					} else
+						e->rtime--;
+				}
+				break;
 			}
 			break;
 		case ENEMY_RESTING:
+			/* TODO same as swearing for peaceful enemies */
 			if (e->rtime == 0) {
 				e->rtime = enemy_rtime[e->id];
 				enemy_set_state(e, enemy_pop_state(e), 0);

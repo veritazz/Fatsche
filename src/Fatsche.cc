@@ -955,8 +955,8 @@ enum enemy_state {
 	ENEMY_MOVE_TO_UPPER_LANE,
 	ENEMY_MOVE_TO_LOWER_LANE,
 	ENEMY_ATTACKING,
-	ENEMY_RESTING,
-	ENEMY_SWEARING,
+	ENEMY_RESTING_SWEARING,
+	ENEMY_SPECIAL,
 	ENEMY_DYING,
 	ENEMY_DEAD,
 	ENEMY_MAX_STATE,
@@ -971,8 +971,8 @@ static const uint8_t boss_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* not used, move to upper lane */
 	0, /* not used, move to lower lane */
 	4, /* attacking */
-	8, /* resting */
-	0, /* swearing, used for peaceful enemies */
+	8, /* resting/swearing */
+	0, /* special */
 	0, /* not used, dying */
 	0, /* not used, dead */
 };
@@ -986,8 +986,8 @@ static const uint8_t vicious_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0, /* not used, move to upper lane */
 	 0, /* not used, move to lower lane */
 	 8, /* attacking */
-	12, /* resting */
-	 0, /* swearing, used for peaceful enemies */
+	12, /* resting/swearing */
+	 0, /* special */
 	 0, /* not used, dying */
 	 0, /* not used, dead */
 };
@@ -1001,8 +1001,8 @@ static const uint8_t peaceful_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* not used, move to upper lane */
 	0, /* not used, move to lower lane */
 	0, /* attacking */
-	0, /* resting */
-	4, /* swearing, used for peaceful enemies */
+	4, /* resting/swearing */
+	0, /* special */
 	0, /* not used, dying */
 	0, /* not used, dead */
 };
@@ -1071,9 +1071,9 @@ static const uint8_t enemy_default_frame_reloads[] = {
 };
 
 static const uint8_t enemy_little_girl_frame_reloads[] = {
-	4,  4, 4, 4,
-	4,  4, 4, 4,
-	4, 12, 4, 4,
+	 4, 4, 4, 4,
+	 4, 4, 4, 4,
+	12, 4, 4, 4,
 };
 
 static const uint8_t *enemy_frame_reloads[ENEMY_MAX] = {
@@ -1265,10 +1265,10 @@ static void update_enemies(void)
 					p->score = 0;
 				enemy_set_state(e, ENEMY_DYING, 0);
 			} else {
-				if (e->state != ENEMY_EFFECT && e->state != ENEMY_SWEARING) {
+				if (e->state != ENEMY_EFFECT && e->state != ENEMY_SPECIAL) {
 					switch (e->type) {
 					case ENEMY_PEACEFUL:
-						enemy_set_state(e, ENEMY_SWEARING, 1);
+						enemy_set_state(e, ENEMY_RESTING_SWEARING, 1);
 						break;
 					default:
 						enemy_set_state(e, ENEMY_EFFECT, 1);
@@ -1368,28 +1368,21 @@ static void update_enemies(void)
 			/* do door damage */
 			if (e->frame == (e->frame_reload - 1) && e->atime == 0) {
 				p->life -= enemy_damage[e->id];
-				enemy_set_state(e, ENEMY_RESTING, 1);
+				enemy_set_state(e, ENEMY_RESTING_SWEARING, 1);
 			}
 			break;
-		case ENEMY_SWEARING:
+		case ENEMY_SPECIAL:
 			switch (e->type)  {
 			case ENEMY_VICIOUS:
 				if (enemy_pee_pee_done(e))
 					enemy_set_state(e, enemy_pop_state(e), 0);
 				break;
-			case ENEMY_PEACEFUL:
-				if (e->frame == e->frame_reload - 1) {
-					if (e->rtime == 0) {
-						e->rtime = enemy_rtime[e->id];
-						enemy_set_state(e, enemy_pop_state(e), 0);
-					} else
-						e->rtime--;
-				}
-				break;
 			}
 			break;
-		case ENEMY_RESTING:
-			/* TODO same as swearing for peaceful enemies */
+		case ENEMY_RESTING_SWEARING:
+			if (e->type == ENEMY_PEACEFUL)
+				if (e->frame != e->frame_reload - 1)
+					break;
 			if (e->rtime == 0) {
 				e->rtime = enemy_rtime[e->id];
 				enemy_set_state(e, enemy_pop_state(e), 0);

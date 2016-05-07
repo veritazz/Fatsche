@@ -952,8 +952,6 @@ enum enemy_state {
 	ENEMY_WALKING_RIGHT,
 	ENEMY_EFFECT,
 	ENEMY_CHANGE_LANE,
-	ENEMY_MOVE_TO_UPPER_LANE,
-	ENEMY_MOVE_TO_LOWER_LANE,
 	ENEMY_ATTACKING,
 	ENEMY_RESTING_SWEARING,
 	ENEMY_SPECIAL,
@@ -968,8 +966,6 @@ static const uint8_t boss_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* walking right */
 	0, /* TODO, effect */
 	0, /* not used, change lane */
-	0, /* not used, move to upper lane */
-	0, /* not used, move to lower lane */
 	4, /* attacking */
 	8, /* resting/swearing */
 	0, /* special */
@@ -983,8 +979,6 @@ static const uint8_t vicious_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 4, /* walking right */
 	 0, /* TODO, effect */
 	 0, /* not used, change lane */
-	 0, /* not used, move to upper lane */
-	 0, /* not used, move to lower lane */
 	 8, /* attacking */
 	12, /* resting/swearing */
 	 0, /* special */
@@ -998,8 +992,6 @@ static const uint8_t peaceful_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* walking right */
 	0, /* TODO, effect */
 	0, /* not used, change lane */
-	0, /* not used, move to upper lane */
-	0, /* not used, move to lower lane */
 	0, /* attacking */
 	4, /* resting/swearing */
 	0, /* special */
@@ -1066,13 +1058,13 @@ static const uint8_t *enemy_masks[ENEMY_MAX] = {
 
 static const uint8_t enemy_default_frame_reloads[] = {
 	4, 4, 4, 4,
-	4, 4, 4, 4,
+	4, 4,
 	4, 4, 4, 4,
 };
 
 static const uint8_t enemy_little_girl_frame_reloads[] = {
 	 4, 4, 4, 4,
-	 4, 4, 4, 4,
+	 4, 4,
 	12, 4, 4, 4,
 };
 
@@ -1107,6 +1099,11 @@ static void enemy_generate_random(struct enemy *e)
 	e->type = type;
 }
 
+static void enemy_flush_states(struct enemy *e)
+{
+	e->pindex = 0;
+}
+
 static void enemy_push_state(struct enemy *e)
 {
 	e->previous_state[e->pindex] = e->state;
@@ -1130,21 +1127,9 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 	if (push)
 		enemy_push_state(e);
 
-	/* TODO do this by type so the tables can be shorter */
-	/* FIXME: super strange */
-	switch (e->state) {
-	case ENEMY_CHANGE_LANE:
-	case ENEMY_MOVE_TO_UPPER_LANE:
-	case ENEMY_MOVE_TO_LOWER_LANE:
-		if (e->dx < e->x)
-			e->sprite_offset = so[ENEMY_WALKING_LEFT];
-		else
-			e->sprite_offset = so[ENEMY_WALKING_RIGHT];
-		break;
-	default:
+	if (state != ENEMY_CHANGE_LANE)
 		e->sprite_offset = so[state];
-		break;
-	}
+
 	e->state = state;
 	e->frame_reload = enemy_frame_reloads[e->id][e->state];
 
@@ -1184,15 +1169,15 @@ static void spawn_new_enemies(void)
 	start_timer(TIMER_ENEMY_SPAWN, ENEMIES_SPAWN_RATE);
 }
 
-static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
+static uint8_t enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 {
 	if (e->y == y) {
 		e->lane = lane;
-		return;
+		return 1;
 	}
 
 	if (e->mtime)
-		return;
+		return 0;
 
 	if (e->dx > e->x)
 		e->x++;
@@ -1204,12 +1189,16 @@ static void enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 		e->y--;
 	else
 		e->y++;
+
+	return 0;
 }
 
 static void enemy_prepare_direction_change(struct enemy *e, uint8_t width)
 {
+	uint8_t min;
 	e->dlane = 1 + random8(2);
-	e->dx = 1 + e->x + random8(WIDTH - e->x - width - abs(lane_y[e->lane] - lane_y[e->dlane]));
+	min = abs(lane_y[e->lane] - lane_y[e->dlane]) + width + 1;
+	e->dx = e->x + min + random8(WIDTH - 2 * min - e->x);
 }
 
 static uint8_t enemy_pee_pee_done(struct enemy *e)
@@ -1265,7 +1254,7 @@ static void update_enemies(void)
 					p->score = 0;
 				enemy_set_state(e, ENEMY_DYING, 0);
 			} else {
-				if (e->state != ENEMY_EFFECT && e->state != ENEMY_SPECIAL) {
+				if (e->state != ENEMY_EFFECT && e->state != ENEMY_SPECIAL && e->state != ENEMY_RESTING_SWEARING) {
 					switch (e->type) {
 					case ENEMY_PEACEFUL:
 						enemy_set_state(e, ENEMY_RESTING_SWEARING, 1);
@@ -1302,13 +1291,15 @@ static void update_enemies(void)
 			if (d->under_attack && a != e) {
 				if (e->type == ENEMY_BOSS) {
 					/* move away for the boss */
+					enemy_flush_states(a);
 					enemy_prepare_direction_change(a, img_width(enemy_sprites[a->id]));
+					enemy_set_state(a, ENEMY_WALKING_LEFT, 0);
 					enemy_set_state(a, ENEMY_WALKING_RIGHT, 1);
 					enemy_set_state(a, ENEMY_CHANGE_LANE, 1);
 				} else {
 					/* door is already under attack, take a walk */
 					enemy_prepare_direction_change(e, width);
-					enemy_set_state(e, ENEMY_WALKING_RIGHT, 1);
+					enemy_set_state(e, ENEMY_WALKING_RIGHT, 0);
 					break;
 				}
 			}
@@ -1319,7 +1310,7 @@ static void update_enemies(void)
 				e->dx = e->x - abs(lane_y[e->lane] - lane_y[e->dlane]);
 				enemy_set_state(e, ENEMY_CHANGE_LANE, 1);
 			} else
-				enemy_set_state(e, ENEMY_ATTACKING, 1);
+				enemy_set_state(e, ENEMY_ATTACKING, 0);
 			break;
 		case ENEMY_WALKING_RIGHT:
 			if (e->mtime)
@@ -1328,9 +1319,9 @@ static void update_enemies(void)
 			if (e->x == (e->dx - abs(lane_y[e->lane] - lane_y[e->dlane]))) {
 				/* randomly change lane */
 				if (e->lane != e->dlane)
-					enemy_set_state(e, ENEMY_CHANGE_LANE, 1);
+					enemy_set_state(e, ENEMY_CHANGE_LANE, 0);
 				else
-					enemy_set_state(e, ENEMY_WALKING_LEFT, 1);
+					enemy_set_state(e, enemy_pop_state(e), 0);
 			} else
 				e->x++;
 			break;
@@ -1342,26 +1333,7 @@ static void update_enemies(void)
 				e->rtime--;
 			break;
 		case ENEMY_CHANGE_LANE:
-			/* FIXME: use function here:
-			 * if (enemy_change_lane())
-			 *   enemy_set_state(e, enemy_pop_state(e), 0);
-			 */
-			if (e->lane != e->dlane) {
-				if (e->lane > e->dlane)
-					enemy_set_state(e, ENEMY_MOVE_TO_UPPER_LANE, 1);
-				else
-					enemy_set_state(e, ENEMY_MOVE_TO_LOWER_LANE, 1);
-			} else
-				enemy_set_state(e, enemy_pop_state(e), 0);
-			break;
-			/* TODO remove these */
-		case ENEMY_MOVE_TO_UPPER_LANE:
-		case ENEMY_MOVE_TO_LOWER_LANE:
-			if (e->lane != e->dlane)
-				enemy_switch_lane(e,
-						  e->dlane,
-						  lane_y[e->dlane] - height);
-			else
+			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
 				enemy_set_state(e, enemy_pop_state(e), 0);
 			break;
 		case ENEMY_ATTACKING:
@@ -1381,7 +1353,7 @@ static void update_enemies(void)
 			break;
 		case ENEMY_RESTING_SWEARING:
 			if (e->type == ENEMY_PEACEFUL)
-				if (e->frame != e->frame_reload - 1)
+				if (e->frame < e->frame_reload - 1)
 					break;
 			if (e->rtime == 0) {
 				e->rtime = enemy_rtime[e->id];

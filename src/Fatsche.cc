@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>
 #include "Arduboy.h"
-#include "ArduboyExtra.h"
 #include "simple_buttons.h"
 
 Arduboy arduboy;

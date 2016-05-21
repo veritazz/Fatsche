@@ -8,18 +8,22 @@ from os.path import basename
 from collections import OrderedDict
 from operator import itemgetter
 
-def print_hex_array(f_data, f):
+def print_hex_array(f_data, f, width=1):
 	size = len(f_data)
 	f.write("\t")
 	for b in range(size):
-		f.write("0x%2.2x," % f_data[b])
+		if width == 1:
+			f.write("0x%2.2x," % f_data[b])
+		else:
+			f.write("0x%2.2x," % (f_data[b] & 0xff))
+			f.write(" ")
+			f.write("0x%2.2x," % (f_data[b] >> 8))
 		if b == size - 1:
 			break
-		if (b + 1) % 12 == 0:
+		if (b + 1) % (12 / width) == 0:
 			f.write("\n\t")
 		else:
 			f.write(" ")
-
 
 def convert_image(width, height, data, color):
 	size = (width * ((height + 7) / 8 * 8)) / 8
@@ -72,18 +76,6 @@ def decode_json(jdata):
 	# assume all sprites have the same dimension
 	return [filename, frames, img_width, img_height, w, h, offset]
 
-def diff_frame(previous, current, f):
-	nr_bytes = len(previous)
-	diff = [None] * nr_bytes
-	for i in range(nr_bytes):
-		p = previous[i]
-		c = current[i];
-		if p < c:
-			d = c - p
-		else:
-			d = p - c
-		diff[i] = d
-
 def convert_image_rle_packed(width, height, data, f):
 	f_data = []
 	distances = []
@@ -113,9 +105,9 @@ def convert_image_rle_packed(width, height, data, f):
 
 	return distances
 
-dictionary = {}
+data_dictionary = {}
 
-def update_dictionary(frame, f):
+def update_dictionary(frame, f, dictionary):
 	for b in frame:
 		try:
 			nr = dictionary[b]
@@ -124,44 +116,116 @@ def update_dictionary(frame, f):
 		nr += 1
 		dictionary[b] = nr
 
+def add_byte(data, bits, byte):
+	if bits == 8:
+		data.append(byte)
+		bits = 0
+		byte = 0
+	return (bits, byte)
+
+def pack_data(data, bits, byte, to_pack):
+	for tp in to_pack:
+		bits, byte = add_byte(data, bits, byte)
+		byte = (byte << bits) | tp
+		bits += 4
+	bits, byte = add_byte(data, bits, byte)
+	return (bits, byte)
+
+###############################################################################
+# packed format
+#
+# 4bits are encoded the following way:
+#    0xf    : special token, next 8bit are raw data
+#    0xe    : special token for repetitive patterns
+#             next 8bit are the repeat count, following 8bit is the value to
+#             repeat
+#    0xd    : special token to indicate the next 8bit is a repeat count
+#             followed by a 4bit value to repeat
+#    0xc    : special token for repetitive patterns
+#             next 8bit is the number of raw encoded values
+#    0xc-0x0: index into a table that holds the data
+#
+###############################################################################
+def find_single_repeats(rle_data):
+	single_repeats = {}
+	last_byte = rle_data[0]
+	count = 1
+	sindex = 0
+	for index in range(1, len(rle_data)):
+		byte = rle_data[index]
+		if byte != last_byte:
+			if count > 1:
+				single_repeats[sindex] = (last_byte, count)
+			count = 1
+			last_byte = byte
+			sindex = index
+			continue
+		count += 1
+	if count > 1:
+		single_repeats[sindex] = (last_byte, count)
+	return single_repeats
+
 def create_packed_image(rle_data, f, l1_table):
 	bits = 0
 	byte = 0
 	packed_data = []
-	for rle_byte in rle_data:
+	single_repeats = find_single_repeats(rle_data)
+	index = 0
+	while index < len(rle_data):
+		special = 0
+		rle_byte = rle_data[index]
 		try:
-			encoded = l1_table[rle_byte]
-		except IndexError:
+			encoded = l1_table.index(rle_byte)
+		except ValueError:
 			encoded = 0xf
-		if bits == 8:
-			packed_data.append(byte)
-			bits = 0
-			byte = 0
-		byte = (byte << bits) | encoded
-		bits += 4
-		if bits == 8:
-			packed_data.append(byte)
-			bits = 0
-			byte = 0
-		if encoded == 0xf:
-			byte = (byte << bits) | ((rle_byte >> 4) & 0xf)
-			bits += 4
-			if bits == 8:
-				packed_data.append(byte)
-				bits = 0
-				byte = 0
-			byte = (byte << bits) | (rle_byte & 0xf)
-			bits += 4
-			if bits == 8:
-				packed_data.append(byte)
-				bits = 0
-				byte = 0
+
+		if index in single_repeats.keys():
+			r = single_repeats[index]
+			if encoded == 0xf:
+				# repeat should be at least 2
+				if r[1] >= 3:
+					special = 1
+					to_pack = [0xe, r[1] >> 4, r[1] & 0xf, rle_byte >> 4, rle_byte & 0xf]
+					index += r[1] - 1
+
+			if encoded != 0xf:
+				if r[1] >= 4:
+					special = 1
+					to_pack = [0xd, r[1] >> 4, r[1] & 0xf, encoded]
+					index += r[1] - 1
+		else:
+			# check if we can mark multiple raw values that are not
+			# in the l1 table
+			index2 = 0
+			while index2 < (len(rle_data) - index):
+				dummy_byte = rle_data[index2 + index]
+				if dummy_byte in l1_table:
+					break
+				index2 += 1
+			if index2 > 2:
+				special = 1
+				to_pack = [0xc, index2 >> 4, index2 & 0xf]
+				for value in rle_data[index:index+index2]:
+					to_pack.append(value >> 4)
+					to_pack.append(value & 0xf)
+				index += index2 - 1
+
+		# no special token matches, just pack normally
+		if not special:
+			if encoded == 0xf:
+				to_pack = [encoded, rle_byte >> 4, rle_byte & 0xf]
+			else:
+				to_pack = [encoded]
+
+		bits, byte = pack_data(packed_data, bits, byte, to_pack)
+		index += 1
+
 	if bits != 0:
-		packed_data.append(byte << 4)
+		packed_data.append(byte << (8 - bits))
 	return packed_data
 
 
-outputfilename = "xxx"
+outputfilename = "images"
 
 images = {}
 
@@ -218,70 +282,89 @@ if __name__ == "__main__":
 			images[img_name] = {"info": (filename, size, fh, fw)}
 			images[img_name]["raw"] = {}
 			images[img_name]["target"] = {}
-			images[img_name]["rle"] = {}
+			images[img_name]["packed"] = {}
 
 			foffset = 0
+			previous_frame = None
 			for frame_nr in range(frames):
 				foffset = frame_nr * fw
 				# copy each image and reshape to linear list
 				img = numpy.reshape(a[:,foffset:foffset+fw], fw*fh).tolist()
-				frame = convert_image(fw, fh, img, color)
-				rle_frame = convert_image_rle_packed(fw, fh, frame, cfile)
-				update_dictionary(rle_frame, cfile)
-
 				images[img_name]["raw"][frame_nr] = img
+				frame = convert_image(fw, fh, img, color)
+				update_dictionary(frame, cfile, data_dictionary)
 				images[img_name]["target"][frame_nr] = frame
-				images[img_name]["rle"][frame_nr] = rle_frame
 
-		sorted_dict = sorted(dictionary.items(), key=itemgetter(1), reverse = True)
-		for t in sorted_dict:
-			print "key: 0x%2.2x value: %u" % (t[0], t[1])
-		print "len of dictionary: %u" % (len(dictionary.keys()))
-		dict_len = len(dictionary.keys())
+		sorted_dict = sorted(data_dictionary.items(), key=itemgetter(1), reverse = True)
+		dict_len = len(data_dictionary.keys())
+
 		# create tables
-		# XXX
 		l1_table = []
-		for l1 in range(15):
+		table_len = 12 if dict_len > 12 else dict_len
+		for l1 in range(table_len):
 			l1_table.append(sorted_dict[l1][0])
-		print "rest to encode: %u" % (dict_len - 15)
+
+		# save l1 translation table
+		hfile.write("extern const uint8_t l1_table[%u];\n" % (table_len))
+		cfile.write("\n")
+		cfile.write("const uint8_t l1_table[%u] PROGMEM = {\n" % (table_len))
+		print_hex_array(l1_table, cfile)
+		cfile.write("\n};\n")
 
 		packed_total_size = 0
-		rle_total_size = 0
 		for k, v in images.iteritems():
 			h = v["info"][2]
 			w = v["info"][3]
-			hfile.write("extern const uint8_t %s_img[%u];\n" % (k, v["info"][1]))
-			cfile.write("\n/* %s height = %u width = %u */\n" % (v["info"][0], h, w))
-			cfile.write("const uint8_t %s_img[%u] PROGMEM = {\n" % (k, v["info"][1]))
-			cfile.write("\t0x%2.2x, /* width */\n" % (h))
-			cfile.write("\t0x%2.2x, /* height */\n" % (w))
 
-			packed_total_size += 2
-			rle_total_size += 2
+			frame_offsets = []
+			offset = 0
+			inc = 0
+			isize = 0
+			offset += 2 + len(v["target"].keys()) * 2
+			for k2, v2 in v["target"].iteritems():
+				mask = 0
+				packed = create_packed_image(v["target"][k2], cfile, l1_table)
+				if len(packed) < len(v["target"][k2]):
+					v["packed"][k2] = packed
+					mask = 0x8000
+					inc = len(packed)
+				else:
+					inc = len(v["target"][k2])
+				frame_offsets.append(offset | mask)
+				offset += inc
+				isize += inc
+
+#			frame_offsets.append((offset & ~0x8000) | mask)
+
+			isize += 2
+			isize += len(frame_offsets) * 2
+
+			hfile.write("extern const uint8_t %s_img[%u];\n" % (k, isize)) #v["info"][1]))
+			cfile.write("\n/* %s height = %u width = %u */\n" % (v["info"][0], h, w))
+			cfile.write("const uint8_t %s_img[%u] PROGMEM = {\n" % (k, isize)) #v["info"][1]))
+			cfile.write("\t0x%2.2x, /* width */\n" % (w))
+			cfile.write("\t0x%2.2x, /* height */\n" % (h))
+
+			print_hex_array(frame_offsets, cfile, 2)
+			cfile.write("\n")
+
+			packed_total_size += 2 + len(frame_offsets) * 2
 			for k2, v2 in v["raw"].iteritems():
 				write_image_as_comment(w, h, v2, k2, cfile, color)
 
-				cfile.write("\n:--- raw %u\n" % len(v2))
-				print_hex_array(v2, cfile)
-				cfile.write("\n:--- target %u\n" % len(v["target"][k2]))
-				print_hex_array(v["target"][k2], cfile)
-				cfile.write("\n:--- rle %u\n" % len(v["rle"][k2]))
-				print_hex_array(v["rle"][k2], cfile)
-				rle_total_size += len(v["rle"][k2])
-
-				packed = create_packed_image(v["rle"][k2], cfile, l1_table)
-				cfile.write("\n:--- packed %u\n" % len(packed))
-				print_hex_array(packed, cfile)
-				cfile.write("\n:---:\n")
-				packed_total_size += len(packed)
+				try:
+					print_hex_array(v["packed"][k2], cfile)
+					packed_total_size += len(v["packed"][k2])
+				except KeyError:
+					print_hex_array(v["target"][k2], cfile)
+					packed_total_size += len(v["target"][k2])
+				cfile.write("\n")
 
 			cfile.write("};\n")
-			cfile.write("\n/* total size %u bytes */\n" % total_size);
-			cfile.write("\n")
 
+		cfile.write("\n/* total size %u bytes */\n" % total_size);
 		hfile.write("\n/* total size %u bytes */\n" % total_size);
 		hfile.write("\n#endif\n")
 
-	print "total image data        = %u bytes" % total_size
-	print "total image data rle    = %u bytes" % rle_total_size
-	print "total image data packed = %u bytes" % packed_total_size
+	print "total image data         = %u bytes" % total_size
+	print "total image data packed  = %u bytes (%u%%)" % (packed_total_size, packed_total_size * 100 / total_size)

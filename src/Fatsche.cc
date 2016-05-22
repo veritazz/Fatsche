@@ -28,6 +28,7 @@ SimpleButtons buttons(arduboy);
 #define MAX_AMMO_W4                 4
 #define NR_BULLETS                  \
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
+#define WEAPON_COOLDOWN             (FPS / 2)
 #define KILLS_TILL_BOSS             2
 
 
@@ -340,6 +341,7 @@ struct bullet {
 };
 
 struct weapon_states {
+	uint8_t cool_down;
 	uint8_t selected:3; /* selected weapon */
 	uint8_t previous:3; /* previous selected weapon */
 	uint8_t direction:1;
@@ -689,6 +691,11 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 	if (gd.ws.ammo[weapon] == 0)
 		return 0;
 
+	if (gd.ws.cool_down)
+		return 0;
+
+	gd.ws.cool_down = WEAPON_COOLDOWN;
+
 	if (p->state != PLAYER_RESTS)
 		b = p->state;
 	else
@@ -729,6 +736,9 @@ static void update_bullets(void)
 {
 	uint8_t b = 0, height;
 	struct bullet *bs;
+
+	if (gd.ws.cool_down)
+		gd.ws.cool_down--;
 
 	do {
 		bs = &gd.ws.bs[b];

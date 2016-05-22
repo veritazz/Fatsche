@@ -28,7 +28,7 @@ SimpleButtons buttons(arduboy);
 #define MAX_AMMO_W4                 4
 #define NR_BULLETS                  \
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
-#define WEAPON_COOLDOWN             (FPS / 2)
+#define WEAPON_COOLDOWN             (FPS / 3)
 #define KILLS_TILL_BOSS             2
 
 
@@ -899,7 +899,7 @@ enum enemy_state {
 	ENEMY_WALKING_LEFT,
 	ENEMY_WALKING_RIGHT,
 	ENEMY_EFFECT,
-	ENEMY_CHANGE_LANE,
+	ENEMY_CHANGE_LANE, //TODO
 	ENEMY_ATTACKING,
 	ENEMY_RESTING_SWEARING,
 	ENEMY_SPECIAL,
@@ -913,7 +913,7 @@ static const uint8_t boss_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* walking left */
 	0, /* walking right */
 	0, /* TODO, effect */
-	0, /* not used, change lane */
+	0, /* TODO not used, change lane */
 	4, /* attacking */
 	8, /* resting/swearing */
 	0, /* special */
@@ -926,7 +926,7 @@ static const uint8_t vicious_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0, /* walking left */
 	 4, /* walking right */
 	 0, /* TODO, effect */
-	 0, /* not used, change lane */
+	 0, /* TODO not used, change lane */
 	 8, /* attacking */
 	12, /* resting/swearing */
 	 0, /* special */
@@ -939,7 +939,7 @@ static const uint8_t peaceful_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* walking left */
 	0, /* walking right */
 	0, /* TODO, effect */
-	0, /* not used, change lane */
+	0, /* TODO not used, change lane */
 	0, /* attacking */
 	4, /* resting/swearing */
 	0, /* special */
@@ -972,11 +972,11 @@ static const int8_t enemy_mtime[ENEMY_MAX] = {
 	FPS / 10,
 	FPS / 10,
 	FPS / 5,
-	FPS / 10,
+	FPS / 3,
 };
 
 static const int8_t enemy_rtime[ENEMY_MAX] = {
-	FPS,
+	FPS * 2,
 	FPS,
 	FPS,
 	FPS * 2,
@@ -986,13 +986,13 @@ static const int8_t enemy_rtime[ENEMY_MAX] = {
 };
 
 static const int8_t enemy_atime[ENEMY_MAX] = {
-	FPS / 10,
-	FPS / 10,
-	FPS / 10,
-	FPS / 10,
-	FPS / 10,
-	FPS / 10,
-	FPS / 15,
+	FPS / 5,
+	FPS / 5,
+	FPS / 5,
+	FPS / 5,
+	FPS / 5,
+	FPS / 5,
+	FPS / 5,
 };
 
 static const int16_t enemy_score[ENEMY_MAX] = {
@@ -1027,13 +1027,13 @@ static const uint8_t *enemy_masks[ENEMY_MAX] = {
 
 static const uint8_t enemy_default_frame_reloads[] = {
 	4, 4, 4, 4,
-	4, 4,
+	4, 4, /* TODO */
 	4, 4, 4, 4,
 };
 
 static const uint8_t enemy_little_girl_frame_reloads[] = {
 	 4, 4, 4, 4,
-	 4, 4,
+	 4, 4, /* TODO */
 	12, 4, 4, 4,
 };
 
@@ -1108,6 +1108,7 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 	if (state != ENEMY_CHANGE_LANE)
 		e->sprite_offset = so[state];
 #endif
+		/* e->sprite_offset = so[state]; TODO */
 	e->state = state;
 	e->frame_reload = enemy_frame_reloads[e->id][e->state];
 
@@ -1430,7 +1431,7 @@ static void spawn_new_powerup(void)
 		if (p->active)
 			continue;
 		p->active = 1;
-		p->atime = 2;
+		p->atime = FPS / 2;
 		p->frame = 0;
 		p->timeout = (random8(4) + 4) * FPS;
 		p->lane = 1 + random8(2);
@@ -1848,7 +1849,7 @@ run(void)
 		break;
 	case GAME_STATE_OVER:
 		/* TODO */
-		gd.game_state = GAME_STATE_OVER;
+		gd.game_state = GAME_STATE_CLEANUP;
 		break;
 	case GAME_STATE_CLEANUP:
 		init_timers();

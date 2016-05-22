@@ -1063,6 +1063,12 @@ static void enemy_generate_random(struct enemy *e)
 	} else if (r < 18) {
 		id = ENEMY_LITTLE_GIRL;
 		type = ENEMY_PEACEFUL;
+	} else if (r < 30) {
+		id = ENEMY_DRUNKEN_PUNK;
+		type = ENEMY_VICIOUS;
+	} else if (r < 60) {
+		id = ENEMY_HACKER;
+		type = ENEMY_THIEF;
 	} else {
 		id = ENEMY_RAIDER;
 		type = ENEMY_VICIOUS;

@@ -7,7 +7,8 @@ ARDMK_DIR=/usr/share/arduino/
 # If not, you might have to include the full path.
 #ALTERNATE_CORE_PATH = /home/veritazz/sketchbook/hardware/core13
 
-BOARD_TAG    = micro
+BOARD_TAG    = leonardo #micro
+MONITOR_PORT  = /dev/ttyACM0
 #ISP_PROG = avrispmkii
 #ISP_PORT = usb
 #AVRDUDE_ARD_BAUDRATE = 100 -B 100

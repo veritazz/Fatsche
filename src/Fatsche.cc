@@ -1,17 +1,17 @@
-#ifdef HOST_TEST
-#include "host_test.h"
-#else
-#include <Arduino.h>
-#include <avr/pgmspace.h>
-#include "Arduboy.h"
-#include "simple_buttons.h"
-
-Arduboy arduboy;
-SimpleButtons buttons(arduboy);
-#endif
-
 #include <stdint.h>
 #include "images.h"
+#include "VeritazzExtra.h"
+
+VeritazzExtra arduboy(l1_table);
+
+#ifndef HOST_TEST
+#include <Arduino.h>
+#include <avr/pgmspace.h>
+#include "simple_buttons.h"
+
+SimpleButtons buttons(arduboy);
+
+#endif
 
 /*---------------------------------------------------------------------------
  * game parameters
@@ -53,56 +53,8 @@ enum program_states {
 #define __flag_black                 (1 << 3)
 #define __flag_white                 (1 << 4)
 
-#define img_width(i)                 pgm_read_byte_near((i) + 0)
-#define img_height(i)                pgm_read_byte_near((i) + 1)
-
-#ifndef HOST_TEST
-static void
-blit_image(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
-	   uint8_t flags)
-{
-	if (mask)
-		arduboy.drawBitmap(x,
-				   y,
-				   mask + 2,
-				   img_width(mask),
-				   img_height(mask),
-				   BLACK);
-
-	arduboy.drawBitmap(x,
-			   y,
-			   img + 2,
-			   img_width(img),
-			   img_height(img),
-			   WHITE);
-}
-
-static void
-blit_image_frame(int16_t x, int16_t y, const uint8_t *img, const uint8_t *mask,
-		 uint8_t nr, uint8_t flags)
-{
-	uint16_t offset;
-	uint8_t w, h;
-
-	w = img_width(img);
-	h = img_height(img);
-	offset = (w * ((h + 7) / 8) * nr) + 2;
-
-	if (mask)
-		arduboy.drawBitmap(x,
-				   y,
-				   mask + offset,
-				   w,
-				   h,
-				   BLACK);
-
-	arduboy.drawBitmap(x,
-			   y,
-			   img + offset,
-			   w,
-			   h,
-			   WHITE);
-}
+#define blit_image(a, b, c, d, e)		arduboy.drawImage(a, b, c, d, e)
+#define blit_image_frame(a, b, c, d, e, f)	arduboy.drawImageFrame(a, b, c, d, e, f)
 
 static void
 draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
@@ -132,7 +84,6 @@ draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 {
 	arduboy.drawLine(x0, y0, x1, y1, WHITE);
 }
-#endif
 
 /*---------------------------------------------------------------------------
  * timers
@@ -210,7 +161,7 @@ static uint8_t random8(uint8_t max)
 #ifdef HOST_TEST
 	return random() % max;
 #else
-	return random(255) % max;
+	return random(max);
 #endif
 }
 
@@ -293,49 +244,22 @@ uint8_t right(void)
 
 static uint8_t next_frame(void)
 {
-#ifdef HOST_TEST
-	static unsigned long current_time = 0;
-	uint8_t new_frame = 0;
-	unsigned long ntime = millis();
-
-	if (ntime > current_time) {
-		current_time = ntime + (1000 / FPS);
-		new_frame = 1;
-		clear_screen();
-		update_inputs();
-		run_timers();
-	}
-
-	{
-		static unsigned int frames = 0;
-		if (new_frame) {
-			frames++;
-			printf("\x1b[%d;%df", 65, 0);
-			printf("ms per frame %u ntime %lu current_time %lu frames %u\n\r",
-			       1000 / FPS,
-			       ntime,
-			       current_time,
-			       frames);
-		}
-	}
-
-	return new_frame;
-#else
 	if (arduboy.nextFrame()) {
-		arduboy.clear();
+#ifdef HOST_TEST
+		update_inputs();
+#else
 		buttons.poll();
+#endif
+		arduboy.clear();
 		run_timers();
 		return 1;
 	}
 	return 0;
-#endif
 }
 
 static void finish_frame(void)
 {
-#ifndef HOST_TEST
 	arduboy.display();
-#endif
 }
 
 /*---------------------------------------------------------------------------
@@ -355,7 +279,6 @@ struct menu_drop {
 
 struct menu {
 	uint8_t initialized;
-	uint8_t update;
 	uint8_t state;
 	struct menu_drop drop[NR_OF_DROPS];
 };
@@ -386,6 +309,8 @@ struct enemy {
 	uint8_t y;
 	uint8_t type:3;
 	uint8_t id:5;
+	uint8_t pee:1; /* indicates this guy will pee against the building */
+	uint8_t pee_x:7;
 	uint8_t atime; /* nr of frames it take for the next animation frame */
 	uint8_t rtime; /* nr of frames it takes to rest */
 	uint8_t mtime; /* nr of frames it takes to move */
@@ -458,26 +383,16 @@ static struct game_data gd;
 /*---------------------------------------------------------------------------
  * setup
  *---------------------------------------------------------------------------*/
-#ifdef __cplusplus
-extern "C"
-{
-#endif
 void
 setup(void)
 {
-#ifndef HOST_TEST
 	arduboy.initRandomSeed();
 	arduboy.setFrameRate(FPS);
 	arduboy.begin();
 	arduboy.clear();
 	arduboy.display();
 	init_timers();
-#else
-#endif
 }
-#ifdef __cplusplus
-}
-#endif
 /*---------------------------------------------------------------------------
  * main menu handling
  *---------------------------------------------------------------------------*/
@@ -538,17 +453,14 @@ mainscreen(void)
 			menu->state = MENU_STATE_HELP;
 		else
 			menu->state--;
-		menu->update = 1;
 	} else if (right()) {
 		if (menu->state == MENU_STATE_HELP)
 			menu->state = MENU_STATE_PLAY;
 		else
 			menu->state++;
-		menu->update = 1;
 	}
 
 	if (!menu->initialized) {
-		menu->update = 1;
 		i = 0;
 		do {
 			drop = &menu->drop[i];
@@ -562,33 +474,31 @@ mainscreen(void)
 	if (a())
 		game_state = data->n_game_state;
 
-	if (menu->update) {
-		blit_image(0,
-			   0,
-			   mainscreen_img,
-			   NULL,
-			   __flag_white);
+	blit_image(0,
+		   0,
+		   mainscreen_img,
+		   NULL,
+		   __flag_white);
 
-		i = 0;
-		do {
-			drop = &menu->drop[i];
-			if (drop->stime)
-				continue;
-			if (drop->state != 2) {
-				blit_image_frame(drop->x,
-						 drop->y,
-						 menu_drops_img,
-						 NULL,
-						 menu_drop_state_frame_offsets[drop->state] + drop->frame,
-						 __flag_white);
-			} else
-				draw_rect(drop->x, drop->y + 4, 2, 2);
-		} while (++i < NR_OF_DROPS);
+	i = 0;
+	do {
+		drop = &menu->drop[i];
+		if (drop->stime)
+			continue;
+		if (drop->state != 2) {
+			blit_image_frame(drop->x,
+					 drop->y,
+					 menu_drops_img,
+					 NULL,
+					 menu_drop_state_frame_offsets[drop->state] + drop->frame,
+					 __flag_white);
+		} else
+			draw_rect(drop->x, drop->y + 4, 2, 2);
+	} while (++i < NR_OF_DROPS);
 
-		draw_hline(data->x, 51, 26);
-		draw_vline(data->x - 1, 52, 9);
-		menu->update = 0;
-	}
+	draw_hline(data->x, 51, 26);
+	draw_vline(data->x - 1, 52, 9);
+
 	i = 0;
 	do {
 		drop = &menu->drop[i];
@@ -603,7 +513,6 @@ mainscreen(void)
 			continue;
 		}
 
-		menu->update = 1;
 		if (drop->frame == 3 && drop->state != 2) {
 			drop->frame = 0;
 			drop->state++;
@@ -931,14 +840,19 @@ enum enemy_types {
 	ENEMY_VICIOUS,
 	ENEMY_BOSS,
 	ENEMY_PEACEFUL,
+	ENEMY_THIEF,
 	ENEMY_MAX_TYPES,
 };
 
 enum enemies {
 	/* vicious enemies */
 	ENEMY_RAIDER,
+	ENEMY_DRUNKEN_PUNK,
+	/* thiefs */
+	ENEMY_HACKER,
 	/* bosses */
 	ENEMY_BOSS1,
+	ENEMY_BOSS2,
 	/* peaceful enemies */
 	ENEMY_GRANDMA,
 	ENEMY_LITTLE_GIRL,
@@ -1000,21 +914,27 @@ static const uint8_t peaceful_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 
 static const uint8_t *enemy_sprite_offsets[ENEMY_MAX] = {
 	vicious_enemy_sprite_offsets,
+	vicious_enemy_sprite_offsets,
+	vicious_enemy_sprite_offsets,
+	boss_enemy_sprite_offsets,
 	boss_enemy_sprite_offsets,
 	peaceful_enemy_sprite_offsets,
 	peaceful_enemy_sprite_offsets,
 };
 
 static const uint8_t enemy_damage[ENEMY_MAX] = {
-	1, 10, 0, 0,
+	1, 1, 0, 10, 20, 0, 0,
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
-	16, 64, 32, 32,
+	16, 16, 16, 64, 64, 32, 32,
 };
 
 static const int8_t enemy_mtime[ENEMY_MAX] = {
 	FPS / 20,
+	FPS / 20,
+	FPS / 20,
+	FPS / 10,
 	FPS / 10,
 	FPS / 5,
 	FPS / 10,
@@ -1022,6 +942,9 @@ static const int8_t enemy_mtime[ENEMY_MAX] = {
 
 static const int8_t enemy_rtime[ENEMY_MAX] = {
 	FPS,
+	FPS,
+	FPS,
+	FPS * 2,
 	FPS * 2,
 	6,
 	0,
@@ -1031,11 +954,17 @@ static const int8_t enemy_atime[ENEMY_MAX] = {
 	FPS / 10,
 	FPS / 10,
 	FPS / 10,
+	FPS / 10,
+	FPS / 10,
+	FPS / 10,
 	FPS / 15,
 };
 
 static const int16_t enemy_score[ENEMY_MAX] = {
 	10,
+	10,
+	10,
+	200,
 	200,
 	-100,
 	-500,
@@ -1043,14 +972,20 @@ static const int16_t enemy_score[ENEMY_MAX] = {
 
 static const uint8_t *enemy_sprites[ENEMY_MAX] = {
 	enemy_raider_img,
+	enemy_dummy1_img,
+	enemy_dummy2_img,
 	enemy_boss_img,
+	enemy_boss_dummy1_img,
 	enemy_grandma_img,
 	enemy_little_girl_img,
 };
 
 static const uint8_t *enemy_masks[ENEMY_MAX] = {
 	enemy_raider_mask_img,
+	enemy_dummy1_mask_img,
+	enemy_dummy2_mask_img,
 	enemy_boss_mask_img,
+	enemy_boss_dummy1_mask_img,
 	enemy_grandma_mask_img,
 	enemy_little_girl_mask_img,
 };
@@ -1068,6 +1003,9 @@ static const uint8_t enemy_little_girl_frame_reloads[] = {
 };
 
 static const uint8_t *enemy_frame_reloads[ENEMY_MAX] = {
+	enemy_default_frame_reloads,
+	enemy_default_frame_reloads,
+	enemy_default_frame_reloads,
 	enemy_default_frame_reloads,
 	enemy_default_frame_reloads,
 	enemy_default_frame_reloads,
@@ -1125,10 +1063,10 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 
 	if (push)
 		enemy_push_state(e);
-
+#if 1
 	if (state != ENEMY_CHANGE_LANE)
 		e->sprite_offset = so[state];
-
+#endif
 	e->state = state;
 	e->frame_reload = enemy_frame_reloads[e->id][e->state];
 
@@ -1151,10 +1089,16 @@ static void spawn_new_enemies(void)
 		memset(e, 0, sizeof(*e));
 		enemy_generate_random(e);
 		e->active = 1;
-		height = enemy_sprites[e->id][1];
+		height = img_height(enemy_sprites[e->id]);
 		e->lane = 1 + random8(2);
+		if (e->lane == 1) {
+			uint8_t width;
+			width = img_width(enemy_sprites[e->id]);
+			e->pee = random8(1);
+			e->pee_x = WIDTH - width * 2 - random8(64);
+		}
 		e->y = lane_y[e->lane] - height;
-		e->x = 127;
+		e->x = WIDTH;
 		e->mtime = enemy_mtime[e->id];
 		e->rtime = enemy_rtime[e->id];
 		e->atime = enemy_atime[e->id];
@@ -1305,22 +1249,32 @@ static void update_enemies(void)
 			d->under_attack = 1;
 			d->attacker = e;
 			e->dlane = DOOR_LANE;
+#if 0
+			e->dx = e->x - abs(lane_y[e->lane] - lane_y[e->dlane]);
+			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
+				enemy_set_state(e, ENEMY_ATTACKING, 0);
+#else
 			if (e->lane != e->dlane) {
 				e->dx = e->x - abs(lane_y[e->lane] - lane_y[e->dlane]);
 				enemy_set_state(e, ENEMY_CHANGE_LANE, 1);
 			} else
 				enemy_set_state(e, ENEMY_ATTACKING, 0);
+#endif
 			break;
 		case ENEMY_WALKING_RIGHT:
 			if (e->mtime)
 				break;
 
 			if (e->x == (e->dx - abs(lane_y[e->lane] - lane_y[e->dlane]))) {
-				/* randomly change lane */
+#if 0
+				if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
+					enemy_set_state(e, enemy_pop_state(e), 0);
+#else
 				if (e->lane != e->dlane)
 					enemy_set_state(e, ENEMY_CHANGE_LANE, 0);
 				else
 					enemy_set_state(e, enemy_pop_state(e), 0);
+#endif
 			} else
 				e->x++;
 			break;
@@ -1331,10 +1285,12 @@ static void update_enemies(void)
 			} else
 				e->rtime--;
 			break;
+#if 1
 		case ENEMY_CHANGE_LANE:
 			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
 				enemy_set_state(e, enemy_pop_state(e), 0);
 			break;
+#endif
 		case ENEMY_ATTACKING:
 			/* do door damage */
 			if (e->frame == (e->frame_reload - 1) && e->atime == 0) {
@@ -1876,11 +1832,6 @@ static const state_fn_t main_state_fn[PROGRAM_STATE_MAX] = {
 	help,
 };
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 void
 loop(void)
 {
@@ -1891,7 +1842,3 @@ loop(void)
 
 	finish_frame();
 }
-
-#ifdef __cplusplus
-}
-#endif

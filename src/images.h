@@ -21,7 +21,7 @@ extern const uint8_t enemy_grandma_mask_img[106];
 extern const uint8_t enemy_boss_dummy1_mask_img[480];
 extern const uint8_t weapons_img[186];
 extern const uint8_t enemy_little_girl_mask_img[448];
-extern const uint8_t game_background_img[272];
+extern const uint8_t game_background_img[325];
 extern const uint8_t powerups_mask_img[75];
 extern const uint8_t player_all_frames_img[337];
 extern const uint8_t enemy_dummy2_mask_img[66];

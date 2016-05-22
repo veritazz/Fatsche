@@ -17,7 +17,7 @@ SimpleButtons buttons(arduboy);
  * game parameters
  *---------------------------------------------------------------------------*/
 #define FPS                         30        /* frame rate */
-#define MAX_ENEMIES                 7         /* max enemies on the scene */
+#define MAX_ENEMIES                 5         /* max enemies on the scene */
 #define ENEMIES_SPAWN_RATE          (FPS * 3) /* every 3 seconds */
 #define PLAYER_REST_TIMEOUT         (FPS * 5) /* players timeout for resting */
 #define PLAYER_MAX_LIFE             256       /* initial players life */

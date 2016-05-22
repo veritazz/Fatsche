@@ -1540,6 +1540,8 @@ static void update_scene(void)
 		}
 	}
 
+	/* TODO add another lamp frame above the door */
+
 	/* update lamp animation */
 	if (timer_500ms_ticks & 1)
 		lamp_frame = random8(2);

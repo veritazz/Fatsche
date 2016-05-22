@@ -29,9 +29,9 @@ public:
 				   uint8_t color);
 
 private:
-	uint8_t nextToken(uint16_t o);
+	uint8_t nextData(uint16_t o);
 	void advanceNibbles(uint16_t nibbles);
-	void nextEncoding(void);
+	void nextToken(void);
 	void setStartByte(const uint8_t *data, uint16_t offset);
 	void unpackBytes(uint8_t *buf, uint16_t len);
 	uint16_t nibble;

@@ -79,7 +79,7 @@ void VeritazzExtra::drawImage(int16_t x, int16_t y, const uint8_t *img,
 		drawBitmap(x, y, img + ioffset, w, h, WHITE);
 }
 
-uint8_t VeritazzExtra::nextToken(uint16_t o)
+uint8_t VeritazzExtra::nextData(uint16_t o)
 {
 	uint8_t data;
 	static const uint8_t shifts[] = {4, 0};
@@ -93,35 +93,35 @@ void VeritazzExtra::advanceNibbles(uint16_t nibbles)
 	nibble += nibbles;
 }
 
-void VeritazzExtra::nextEncoding(void)
+void VeritazzExtra::nextToken(void)
 {
-	last_token = nextToken(0);
+	last_token = nextData(0);
 	switch (last_token) {
 	case 0xf:
 		/* 8 bit raw data follows */
-		value = (nextToken(1) << 4) | nextToken(2);
+		value = (nextData(1) << 4) | nextData(2);
 		advance = 3;
 		count = 1;
 		break;
 	case 0xe:
 		/* 8 bit repeat count follows */
 		/* 8 bit raw data follows */
-		count = (nextToken(1) << 4) | nextToken(2);
-		value = (nextToken(3) << 4) | nextToken(4);
+		count = (nextData(1) << 4) | nextData(2);
+		value = (nextData(3) << 4) | nextData(4);
 		advance = 5;
 		break;
 	case 0xd:
 		/* 8 bit repeat count follows */
 		/* 4 bit keyed data follows */
-		count = (nextToken(1) << 4) | nextToken(2);
-		value = nextToken(3);
+		count = (nextData(1) << 4) | nextData(2);
+		value = nextData(3);
 		advance = 4;
 		break;
 	case 0xc:
 		/* 8 bit repeat count follows */
 		/* repeat * 8 bit raw data follows */
-		count = (nextToken(1) << 4) | nextToken(2);
-		value = (nextToken(3) << 4) | nextToken(4);
+		count = (nextData(1) << 4) | nextData(2);
+		value = (nextData(3) << 4) | nextData(4);
 		advance = count * 2 + 3;
 		break;
 	default:
@@ -139,7 +139,7 @@ void VeritazzExtra::setStartByte(const uint8_t *data, uint16_t offset)
 	packed = data;
 
 	for (;;) {
-		nextEncoding();
+		nextToken();
 		if (o + count > offset)
 			break;
 		o += count;
@@ -164,7 +164,7 @@ void VeritazzExtra::setStartByte(const uint8_t *data, uint16_t offset)
 			advance = (count - diff) * 2;// + 3;
 			count = diff;
 			advanceNibbles(advance);
-			value = (nextToken(3) << 4) | nextToken(4);
+			value = (nextData(3) << 4) | nextData(4);
 			advance = 0;
 			break;
 		}
@@ -196,7 +196,7 @@ void VeritazzExtra::unpackBytes(uint8_t *buf, uint16_t len)
 			/* repeat * 8 bit raw data follows */
 			buf[i] = value;
 			advanceNibbles(2);
-			value = (nextToken(3) << 4) | nextToken(4);
+			value = (nextData(3) << 4) | nextData(4);
 			advance = 3;
 			break;
 		default:
@@ -207,7 +207,7 @@ void VeritazzExtra::unpackBytes(uint8_t *buf, uint16_t len)
 		i++;
 		if (count == 0) {
 			advanceNibbles(advance);
-			nextEncoding();
+			nextToken();
 		}
 		if (i == len)
 			break;
@@ -225,15 +225,13 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
 	int sRow = y / 8;
 	int sCol = 0;
 	int eCol = w - (x + w > WIDTH ? (x + w) % WIDTH : 0);
-	int nrCols;
 	if (y < 0) {
 		sRow--;
 		yOffset = 8 - yOffset;
 	}
 	if (x < 0)
 		sCol = abs(x);
-	nrCols = eCol - sCol;
-	uint8_t buf[w]; //nrCols];
+	uint8_t buf[w];
 
 	setStartByte(img, 0);
 

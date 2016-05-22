@@ -205,6 +205,12 @@ uint8_t right(void)
 {
 	return !!(input_current & KEY_RIGHT);
 }
+#define pressedA()           a()
+#define pressedB()           b()
+#define pressedUp()          up()
+#define pressedDown()        down()
+#define pressedLeft()        left()
+#define pressedRight()       right()
 #else
 uint8_t a(void)
 {
@@ -230,6 +236,32 @@ uint8_t right(void)
 {
 	return buttons.right();
 }
+
+uint8_t pressedA(void)
+{
+	return buttons.pressedA();
+}
+uint8_t pressedB(void)
+{
+	return buttons.pressedB();
+}
+uint8_t pressedUp(void)
+{
+	return buttons.pressedUp();
+}
+uint8_t pressedDown(void)
+{
+	return buttons.pressedDown();
+}
+uint8_t pressedLeft(void)
+{
+	return buttons.pressedLeft();
+}
+uint8_t pressedRight(void)
+{
+	return buttons.pressedRight();
+}
+
 #endif
 
 /*---------------------------------------------------------------------------
@@ -443,12 +475,12 @@ mainscreen(void)
 	struct menu *menu = &gd.menu;
 	uint8_t i;
 
-	if (left()) {
+	if (pressedLeft()) {
 		if (menu->state == MENU_STATE_PLAY)
 			menu->state = MENU_STATE_HELP;
 		else
 			menu->state--;
-	} else if (right()) {
+	} else if (pressedRight()) {
 		if (menu->state == MENU_STATE_HELP)
 			menu->state = MENU_STATE_PLAY;
 		else
@@ -1756,15 +1788,15 @@ run(void)
 		}
 
 		/* back to menu */
-		if (up() && a()) {
+		if (pressedUp() && pressedA()) {
 			gd.game_state = GAME_STATE_CLEANUP;
 			break;
 		}
 
 		/* check user inputs */
-		if (up()) {
+		if (pressedUp()) {
 			select_weapon(-1);
-		} else if (down()) {
+		} else if (pressedDown()) {
 			select_weapon(1);
 		} else if (left()) {
 			/* move character to the left */

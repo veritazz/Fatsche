@@ -7,6 +7,13 @@
 extern uint8_t get_inputs(void);
 #endif
 
+#define __flag_none                  (0)
+#define __flag_color_invert          (1 << 0)
+#define __flag_h_mirror              (1 << 1)
+#define __flag_v_mirror              (1 << 2)
+#define __flag_black                 (1 << 3)
+#define __flag_white                 (1 << 4)
+
 #define img_width(i)                 pgm_read_byte((i) + 0)
 #define img_height(i)                pgm_read_byte((i) + 1)
 #define img_offset(i, o)             pgm_read_word((i) + 2 + ((o) * 2))

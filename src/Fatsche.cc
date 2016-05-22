@@ -46,13 +46,6 @@ enum program_states {
 /*---------------------------------------------------------------------------
  * graphic functions
  *---------------------------------------------------------------------------*/
-#define __flag_none                  (0)
-#define __flag_color_invert          (1 << 0)
-#define __flag_h_mirror              (1 << 1)
-#define __flag_v_mirror              (1 << 2)
-#define __flag_black                 (1 << 3)
-#define __flag_white                 (1 << 4)
-
 #define blit_image(a, b, c, d, e)		arduboy.drawImage(a, b, c, d, e)
 #define blit_image_frame(a, b, c, d, e, f)	arduboy.drawImageFrame(a, b, c, d, e, f)
 

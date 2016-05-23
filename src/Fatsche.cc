@@ -656,9 +656,10 @@ static void update_player(int8_t dx, uint8_t throws)
 			p->x++;
 	}
 
-	/* XXX might introduce timeout to reduce fire rate */
 	if (throws && p->state == PLAYER_RESTS)
 		player_set_state(p->previous_state);
+	else if (throws)
+		start_timer(TIMER_PLAYER_RESTS, PLAYER_REST_TIMEOUT);
 
 	/* update frames */
 	if (p->atime == 0) {

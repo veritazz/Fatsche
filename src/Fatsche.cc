@@ -1486,7 +1486,7 @@ static void update_powerups(void)
 				continue;
 			}
 
-			pu->atime = 2;
+			pu->atime = FPS / 2;
 			pu->frame++;
 			if (pu->frame == 4)
 				pu->frame = 0;
@@ -1694,18 +1694,14 @@ static void draw_scene(void)
 	/* draw current life */
 	life_level = (p->life * 4 + PLAYER_MAX_LIFE - 1) / PLAYER_MAX_LIFE;
 	if (life_level > 2) {
-		draw_rect(0, 57, 15, 7);
+		draw_rect(0, 59, 15, 5);
 	} else {
 		if (timer_500ms_ticks & 1)
-			draw_rect(0, 57, 15, 7);
+			draw_rect(0, 59, 15, 5);
 	}
 
-	while (life_level--) {
-		draw_filled_rect(2 + (3 * life_level),
-				 59,
-				 2,
-				 3);
-	}
+	while (life_level--)
+		draw_hline(2 + (3 * life_level), 61, 2);
 
 	if (gd.ws.stime) {
 		blit_image_frame(gd.ws.icon_x,
@@ -1721,7 +1717,7 @@ static void draw_scene(void)
 	/* TODO */
 
 	/* draw lamp animation */
-	blit_image_frame(70,
+	blit_image_frame(56,
 			 HEIGHT - img_height(scene_lamp_img),
 			 scene_lamp_img,
 			 NULL,

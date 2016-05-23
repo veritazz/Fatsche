@@ -13,6 +13,7 @@ extern uint8_t get_inputs(void);
 #define __flag_v_mirror              (1 << 2)
 #define __flag_black                 (1 << 3)
 #define __flag_white                 (1 << 4)
+#define __flag_unpack                (1 << 7)
 
 #define img_width(i)                 pgm_read_byte((i) + 0)
 #define img_height(i)                pgm_read_byte((i) + 1)
@@ -23,19 +24,19 @@ class VeritazzExtra: public Arduboy
 public:
 	VeritazzExtra(const uint8_t *xlate);
 
+	void bootLogo();
 	void drawBitmap(int16_t x, int16_t y, const uint8_t *img, uint8_t w, uint8_t h,
 			uint8_t color);
 	void drawImage(int16_t x, int16_t y, const uint8_t *bitmap,
 			const uint8_t *mask, uint8_t color);
-
-	void drawPackedImage(int16_t x, int16_t y, const uint8_t *img, uint8_t w, uint8_t h,
-				uint8_t color);
-
 	void drawImageFrame(int16_t x, int16_t y, const uint8_t *img,
 				   const uint8_t *mask, uint8_t nr,
 				   uint8_t color);
 
 private:
+	void drawPackedImage(int16_t x, int16_t y, const uint8_t *img, uint8_t w, uint8_t h,
+				uint8_t color, uint8_t flags);
+
 	uint8_t nextData(uint16_t o);
 	void advanceNibbles(uint16_t nibbles);
 	void nextToken(void);

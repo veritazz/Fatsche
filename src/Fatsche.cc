@@ -901,7 +901,7 @@ enum enemy_state {
 	ENEMY_WALKING_LEFT,
 	ENEMY_WALKING_RIGHT,
 	ENEMY_EFFECT,
-	ENEMY_CHANGE_LANE, //TODO
+//	ENEMY_CHANGE_LANE, //TODO
 	ENEMY_ATTACKING,
 	ENEMY_RESTING_SWEARING,
 	ENEMY_SPECIAL,
@@ -915,7 +915,7 @@ static const uint8_t boss_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* walking left */
 	0, /* walking right */
 	0, /* TODO, effect */
-	0, /* TODO not used, change lane */
+//	0, /* TODO not used, change lane */
 	4, /* attacking */
 	8, /* resting/swearing */
 	0, /* special */
@@ -928,7 +928,7 @@ static const uint8_t vicious_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0, /* walking left */
 	 4, /* walking right */
 	 0, /* TODO, effect */
-	 0, /* TODO not used, change lane */
+//	 0, /* TODO not used, change lane */
 	 8, /* attacking */
 	12, /* resting/swearing */
 	 0, /* special */
@@ -941,7 +941,7 @@ static const uint8_t peaceful_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* walking left */
 	0, /* walking right */
 	0, /* TODO, effect */
-	0, /* TODO not used, change lane */
+//	0, /* TODO not used, change lane */
 	0, /* attacking */
 	4, /* resting/swearing */
 	0, /* special */
@@ -1029,13 +1029,13 @@ static const uint8_t *enemy_masks[ENEMY_MAX] = {
 
 static const uint8_t enemy_default_frame_reloads[] = {
 	4, 4, 4, 4,
-	4, 4, /* TODO */
+	4, //4, /* TODO */
 	4, 4, 4, 4,
 };
 
 static const uint8_t enemy_little_girl_frame_reloads[] = {
 	 4, 4, 4, 4,
-	 4, 4, /* TODO */
+	 4, //4, /* TODO */
 	12, 4, 4, 4,
 };
 
@@ -1106,11 +1106,11 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 
 	if (push)
 		enemy_push_state(e);
-#if 1
+#if 0
 	if (state != ENEMY_CHANGE_LANE)
 		e->sprite_offset = so[state];
 #endif
-		/* e->sprite_offset = so[state]; TODO */
+	e->sprite_offset = so[state];
 	e->state = state;
 	e->frame_reload = enemy_frame_reloads[e->id][e->state];
 
@@ -1168,8 +1168,7 @@ static uint8_t enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 
 	if (e->dx > e->x)
 		e->x++;
-
-	if (e->dx < e->x)
+	else
 		e->x--;
 
 	if (e->y > y)
@@ -1285,7 +1284,7 @@ static void update_enemies(void)
 					enemy_prepare_direction_change(a, img_width(enemy_sprites[a->id]));
 					enemy_set_state(a, ENEMY_WALKING_LEFT, 0);
 					enemy_set_state(a, ENEMY_WALKING_RIGHT, 1);
-					enemy_set_state(a, ENEMY_CHANGE_LANE, 1);
+//					enemy_set_state(a, ENEMY_CHANGE_LANE, 1);
 				} else {
 					/* door is already under attack, take a walk */
 					enemy_prepare_direction_change(e, width);
@@ -1296,7 +1295,7 @@ static void update_enemies(void)
 			d->under_attack = 1;
 			d->attacker = e;
 			e->dlane = DOOR_LANE;
-#if 0
+#if 1
 			e->dx = e->x - abs(lane_y[e->lane] - lane_y[e->dlane]);
 			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
 				enemy_set_state(e, ENEMY_ATTACKING, 0);
@@ -1312,18 +1311,18 @@ static void update_enemies(void)
 			if (e->mtime)
 				break;
 
-			if (e->x == (e->dx - abs(lane_y[e->lane] - lane_y[e->dlane]))) {
-#if 0
-				if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
-					enemy_set_state(e, enemy_pop_state(e), 0);
+#if 1
+			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
+				e->x++;
 #else
+			if (e->x == (e->dx - abs(lane_y[e->lane] - lane_y[e->dlane]))) {
 				if (e->lane != e->dlane)
 					enemy_set_state(e, ENEMY_CHANGE_LANE, 0);
 				else
 					enemy_set_state(e, enemy_pop_state(e), 0);
-#endif
 			} else
 				e->x++;
+#endif
 			break;
 		case ENEMY_EFFECT:
 			if (e->rtime == 0) {
@@ -1332,7 +1331,7 @@ static void update_enemies(void)
 			} else
 				e->rtime--;
 			break;
-#if 1
+#if 0
 		case ENEMY_CHANGE_LANE:
 			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
 				enemy_set_state(e, enemy_pop_state(e), 0);

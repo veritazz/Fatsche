@@ -1,8 +1,27 @@
 #include "VeritazzExtra.h"
+#include "images.h"
 
 VeritazzExtra::VeritazzExtra(const uint8_t *xlate)
 {
 	this->xlate = xlate;
+}
+
+void VeritazzExtra::bootLogo()
+{
+	for(int8_t y = -18; y <= 24; y++) {
+
+		clear();
+		drawImage(20, y, arduboy_logo_img, NULL, WHITE);
+		display();
+		delay(27);
+		// longer delay post boot, we put it inside the loop to
+		// save the flash calling clear/delay again outside the loop
+		if (y == -16) {
+			delay(250);
+		}
+	}
+
+	delay(750);
 }
 
 void VeritazzExtra::drawBitmap(int16_t x, int16_t y, const uint8_t *img, uint8_t w, uint8_t h,
@@ -52,31 +71,7 @@ void VeritazzExtra::drawBitmap(int16_t x, int16_t y, const uint8_t *img, uint8_t
 void VeritazzExtra::drawImage(int16_t x, int16_t y, const uint8_t *img,
                               const uint8_t *mask, uint8_t color)
 {
-	uint16_t ioffset;
-	uint8_t w, h, iunpack;
-
-	w = img_width(img);
-	h = img_height(img);
-	ioffset = img_offset(img, 0);
-	iunpack = !!(ioffset & 0x8000);
-	ioffset &= 0x7fff;
-
-	if (mask) {
-		uint8_t munpack;
-		uint16_t moffset;
-		moffset = img_offset(mask, 0);
-		munpack = !!(moffset & 0x8000);
-		moffset &= 0x7fff;
-		if (munpack)
-			drawPackedImage(x, y, mask + moffset, w, h, BLACK);
-		else
-			drawBitmap(x, y, mask + moffset, w, h, BLACK);
-	}
-
-	if (iunpack)
-		drawPackedImage(x, y, img + ioffset, w, h, WHITE);
-	else
-		drawBitmap(x, y, img + ioffset, w, h, WHITE);
+	drawImageFrame(x, y, img, mask, 0, color);
 }
 
 uint8_t VeritazzExtra::nextData(uint16_t o)
@@ -215,7 +210,8 @@ void VeritazzExtra::unpackBytes(uint8_t *buf, uint16_t len)
 }
 
 void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
-                                    uint8_t w, uint8_t h, uint8_t color)
+                                    uint8_t w, uint8_t h, uint8_t color,
+                                    uint8_t flags)
 {
 	// no need to dar at all of we're offscreen
 	if (x + w < 0 || x > WIDTH - 1 || y + h < 0 || y > HEIGHT - 1)
@@ -233,13 +229,23 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
 		sCol = abs(x);
 	uint8_t buf[w];
 
-	setStartByte(img, 0);
+	if (flags & __flag_unpack)
+		setStartByte(img, 0);
 
 	int rows = h / 8;
 	if (h % 8 != 0) rows++;
 	for (int a = 0; a < rows; a++) {
 		int bRow = sRow + a;
-		unpackBytes(buf, w);
+		if (flags & __flag_unpack)
+			unpackBytes(buf, w);
+		else {
+#ifndef HOST_TEST
+			memcpy_P(buf, img, w);
+#else
+			memcpy(buf, img, w);
+#endif
+			img += w;
+		}
 		if (bRow > (HEIGHT / 8) - 1) break;
 		if (bRow >= 0) {
 			for (int iCol = sCol; iCol < eCol; iCol++) {
@@ -271,23 +277,17 @@ void VeritazzExtra::drawImageFrame(int16_t x, int16_t y, const uint8_t *img,
 	w = img_width(img);
 	h = img_height(img);
 	ioffset = img_offset(img, nr);
-	iunpack = !!(ioffset & 0x8000);
+	iunpack = (ioffset & 0x8000) >> 8;
 	ioffset &= 0x7fff;
 
 	if (mask) {
 		uint16_t moffset;
 		uint8_t munpack;
 		moffset = img_offset(mask, nr);
-		munpack = !!(moffset & 0x8000);
+		munpack = (moffset & 0x8000) >> 8;
 		moffset &= 0x7fff;
-		if (munpack)
-			drawPackedImage(x, y, mask + moffset, w, h, BLACK);
-		else
-			drawBitmap(x, y, mask + moffset, w, h, BLACK);
+		drawPackedImage(x, y, mask + moffset, w, h, BLACK, munpack);
 	}
 
-	if (iunpack)
-		drawPackedImage(x, y, img + ioffset, w, h, WHITE);
-	else
-		drawBitmap(x, y, img + ioffset, w, h, WHITE);
+	drawPackedImage(x, y, img + ioffset, w, h, WHITE, iunpack);
 }

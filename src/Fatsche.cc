@@ -352,6 +352,7 @@ struct enemy {
 	uint8_t previous_state[4];
 	uint8_t pindex;
 	uint8_t sprite_offset;
+	uint8_t hit;
 };
 
 struct door {
@@ -1228,6 +1229,10 @@ static void update_enemies(void)
 			if (p->poison)
 				e->poisoned = 4;
 			e->life -= damage; /* bullet damage */
+			if (e->type != ENEMY_PEACEFUL) {
+				/* blink for 2 secs */
+				e->hit = FPS * 2;
+			}
 			if (e->life <= 0) {
 				if (d->attacker == e) {
 					d->attacker = NULL;
@@ -1246,7 +1251,6 @@ static void update_enemies(void)
 						enemy_set_state(e, ENEMY_RESTING_SWEARING, 1);
 						break;
 					default:
-						enemy_set_state(e, ENEMY_EFFECT, 1);
 						break;
 					}
 				}
@@ -1360,7 +1364,7 @@ static void update_enemies(void)
 				e->rtime--;
 			break;
 		case ENEMY_DYING:
-			if (e->atime == 0)
+			if (e->hit == 0)
 				enemy_set_state(e, ENEMY_DEAD, 0);
 			break;
 		case ENEMY_DEAD:
@@ -1379,8 +1383,7 @@ static void update_enemies(void)
 		/* next animation */
 		if (e->atime == 0) {
 			e->atime = enemy_atime[e->id];
-			if (e->state != ENEMY_EFFECT)
-				e->frame++;
+			e->frame++;
 			if (e->frame == e->frame_reload)
 				e->frame = 0;
 		} else
@@ -1393,6 +1396,8 @@ static void update_enemies(void)
 				e->mtime = 0;
 		} else
 			e->mtime--;
+		if (e->hit)
+			e->hit--;
 	} while (++i < MAX_ENEMIES);
 }
 
@@ -1625,10 +1630,6 @@ static void draw_enemies(void)
 			continue;
 		show = 0;
 		switch (e->state) {
-		case ENEMY_DYING:
-		case ENEMY_EFFECT:
-			show = e->atime & 1;
-			break;
 		case ENEMY_DEAD:
 			/* draw score */
 			draw_number(e->x, e->y, enemy_score[e->id], 100, 2);
@@ -1637,7 +1638,7 @@ static void draw_enemies(void)
 			show = 1;
 			break;
 		}
-		if (show) {
+		if (show && !(e->hit & 1)) {
 			blit_image_frame(e->x,
 					 e->y,
 					 enemy_sprites[e->id],

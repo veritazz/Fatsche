@@ -12,7 +12,7 @@ extern const uint8_t water_bomb_air_mask_img[24];
 extern const uint8_t poison_damage_img[11];
 extern const uint8_t enemy_dummy4_img[336];
 extern const uint8_t mainscreen_img[665];
-extern const uint8_t enemy_raider_mask_img[71];
+extern const uint8_t enemy_boss_mask_img[480];
 extern const uint8_t enemy_boss_dummy2_mask_img[480];
 extern const uint8_t scene_lamp_img[28];
 extern const uint8_t enemy_grandma_img[216];
@@ -33,12 +33,13 @@ extern const uint8_t enemy_boss_dummy1_img[997];
 extern const uint8_t numbers_3x5_img[52];
 extern const uint8_t enemy_dummy4_mask_img[66];
 extern const uint8_t characters_3x4_img[58];
-extern const uint8_t enemy_boss_mask_img[480];
+extern const uint8_t arduboy_logo_img[147];
+extern const uint8_t enemy_raider_mask_img[71];
 extern const uint8_t bomb_splash_img[38];
 extern const uint8_t enemy_raider_img[434];
 extern const uint8_t powerups_img[108];
 extern const uint8_t menu_drops_img[81];
 
-/* total size 18789 bytes */
+/* total size 18967 bytes */
 
 #endif

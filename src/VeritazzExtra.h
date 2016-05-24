@@ -24,6 +24,7 @@ class VeritazzExtra: public Arduboy
 public:
 	VeritazzExtra(const uint8_t *xlate);
 
+	void begin();
 	void bootLogo();
 	void drawBitmap(int16_t x, int16_t y, const uint8_t *img, uint8_t w, uint8_t h,
 			uint8_t color);

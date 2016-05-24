@@ -6,6 +6,19 @@ VeritazzExtra::VeritazzExtra(const uint8_t *xlate)
 	this->xlate = xlate;
 }
 
+void VeritazzExtra::begin()
+{
+#ifndef HOST_TEST
+	boot();
+#endif
+
+	bootLogo();
+
+#ifndef HOST_TEST
+	audio.begin();
+#endif
+}
+
 void VeritazzExtra::bootLogo()
 {
 	for(int8_t y = -18; y <= 24; y++) {

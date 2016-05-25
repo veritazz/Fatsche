@@ -10,7 +10,6 @@ assets="mainscreen"
 assets="mainscreen game_background enemy_little_girl water_bomb_air
 	bomb_splash player_all_frames enemy_raider enemy_grandma enemy_boss
 	scene_lamp numbers_3x5 weapons powerups menu_drops characters_3x4
-	arduboy_logo
 	poison_damage
 	enemy_dummy1
 	enemy_dummy2
@@ -18,6 +17,9 @@ assets="mainscreen game_background enemy_little_girl water_bomb_air
 	enemy_dummy4
 	enemy_boss_dummy1
 	enemy_boss_dummy2
+	arduboy_logo
+	text_game_over
+	text_boss_time
 "
 
 # assets that have a mask layer

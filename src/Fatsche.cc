@@ -57,9 +57,9 @@ draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 }
 
 static void
-draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t c)
 {
-	arduboy.fillRect(x, y, w, h, WHITE);
+	arduboy.fillRect(x, y, w, h, c);
 }
 
 static void
@@ -1422,7 +1422,7 @@ static void spawn_new_powerup(void)
 		if (p->active)
 			continue;
 		p->active = 1;
-		p->atime = FPS / 2;
+		p->atime = FPS / 4;
 		p->frame = 0;
 		p->timeout = (random8(4) + 4) * FPS;
 		p->lane = 1 + random8(2);
@@ -1476,7 +1476,7 @@ static void update_powerups(void)
 				continue;
 			}
 
-			pu->atime = FPS / 2;
+			pu->atime = FPS / 4;
 			pu->frame++;
 			if (pu->frame == 4)
 				pu->frame = 0;
@@ -1534,6 +1534,7 @@ static void update_scene(void)
 	/* TODO add another lamp frame above the door */
 
 	/* update lamp animation */
+	/* TODO maybe just draw the blinky line */
 	if (timer_500ms_ticks & 1)
 		lamp_frame = random8(2);
 }
@@ -1672,22 +1673,34 @@ static void draw_powerups(void)
 	} while (++i < MAX_POWERUPS);
 }
 
-static void draw_scene(void)
+static void draw_life_bar(uint8_t x, uint8_t y, int16_t current, int16_t max,
+			  uint8_t blink)
 {
-	struct player *p = &gd.player;
 	int16_t life_level;
 
 	/* draw current life */
-	life_level = (p->life * 4 + PLAYER_MAX_LIFE - 1) / PLAYER_MAX_LIFE;
-	if (life_level > 2) {
-		draw_rect(0, 59, 15, 5);
+	life_level = (current * 4 + max - 1) / max;
+	if (life_level > 2 || !blink) {
+		draw_rect(x, y, 15, 5);
 	} else {
 		if (timer_500ms_ticks & 1)
-			draw_rect(0, 59, 15, 5);
+			draw_rect(x, y, 15, 5);
 	}
 
 	while (life_level--)
-		draw_hline(2 + (3 * life_level), 61, 2);
+		draw_hline(x + 2 + (3 * life_level), y + 2, 2);
+}
+
+static void draw_scene(void)
+{
+	struct player *p = &gd.player;
+	struct door *d = &gd.door;
+
+	draw_life_bar(0, 59, p->life, PLAYER_MAX_LIFE, 1);
+	if (d->under_attack) {
+		struct enemy *e = d->attacker;
+		draw_life_bar(20, 59, e->life, enemy_life[e->id], 0);
+	}
 
 	if (gd.ws.stime) {
 		blit_image_frame(gd.ws.icon_x,
@@ -1750,12 +1763,31 @@ static void draw_score(void)
 	draw_number(100, 59, p->score, 1000000, 1);
 }
 
+static void draw_screen(void)
+{
+	/* draw main scene */
+	blit_image(0, 0, game_background_img, NULL, __flag_none);
+	/* draw player */
+	draw_player();
+	/* draw powerups */
+	draw_powerups();
+	/* draw enemies */
+	draw_enemies();
+	/* update animations */
+	draw_bullets();
+	/* draw new score */
+	draw_score();
+	/* draw scene */
+	draw_scene();
+}
+
 static uint8_t
 run(void)
 {
 	uint8_t throws = 0;
 	int8_t dx = 0;
 	uint8_t rstate = PROGRAM_RUN_GAME;
+	static int8_t y;
 
 	switch (gd.game_state) {
 	case GAME_STATE_INIT:
@@ -1775,6 +1807,8 @@ run(void)
 	case GAME_STATE_RUN_GAME:
 		/* check for game over */
 		if (check_game_over()) {
+			init_timers();
+			y = -img_height(text_game_over_img);
 			gd.game_state = GAME_STATE_OVER;
 			break;
 		}
@@ -1798,12 +1832,12 @@ run(void)
 			dx = 1;
 		}
 		if (a()) {
-			/* throws bullet to the lower lane of the street */
-			throws = new_bullet(LOWER_LANE, gd.ws.selected);
-		}
-		if (b()) {
 			/* throws bullet to the upper lane of the street */
 			throws = new_bullet(UPPER_LANE, gd.ws.selected);
+		}
+		if (b()) {
+			/* throws bullet to the lower lane of the street */
+			throws = new_bullet(LOWER_LANE, gd.ws.selected);
 		}
 
 		/* update bullets */
@@ -1817,25 +1851,25 @@ run(void)
 		/* update player */
 		update_player(dx, throws);
 
-		/* draw main scene */
-		blit_image(0, 0, game_background_img, NULL, __flag_none);
-		/* draw player */
-		draw_player();
-		/* draw powerups */
-		draw_powerups();
-		/* draw enemies */
-		draw_enemies();
-		/* update animations */
-		draw_bullets();
-		/* draw new score */
-		draw_score();
-		/* draw scene */
-		draw_scene();
+		draw_screen();
+
 		break;
-	case GAME_STATE_OVER:
-		/* TODO */
-		gd.game_state = GAME_STATE_CLEANUP;
+	case GAME_STATE_OVER: {
+		uint8_t height = img_height(text_game_over_img);
+
+		draw_screen();
+		draw_rect(0, y - 2, WIDTH, height + 4);
+		draw_filled_rect(1, y - 1, WIDTH - 2, height + 2, BLACK);
+		blit_image(7, y, text_game_over_img, NULL, __flag_none);
+
+		if (y <= (HEIGHT - height) / 2) {
+			y++;
+		} else {
+			if (a())
+				gd.game_state = GAME_STATE_CLEANUP;
+		}
 		break;
+	}
 	case GAME_STATE_CLEANUP:
 		init_timers();
 		rstate = PROGRAM_MAIN_MENU;

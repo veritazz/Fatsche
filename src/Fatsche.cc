@@ -1171,7 +1171,7 @@ static uint8_t enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 	if (e->mtime)
 		return 0;
 
-	if (e->dx > e->x)
+	if (e->state == ENEMY_WALKING_RIGHT)
 		e->x++;
 	else
 		e->x--;
@@ -1234,8 +1234,8 @@ static void update_enemies(void)
 				e->poisoned = 4;
 			e->life -= damage; /* bullet damage */
 			if (e->type != ENEMY_PEACEFUL) {
-				/* blink for 2 secs */
-				e->hit = FPS * 2;
+				/* blink for 1 secs */
+				e->hit = FPS;
 			}
 			if (e->life <= 0) {
 				if (d->attacker == e) {

@@ -153,7 +153,7 @@ def find_single_repeats(rle_data):
 	sindex = 0
 	for index in range(1, len(rle_data)):
 		byte = rle_data[index]
-		if byte != last_byte:
+		if byte != last_byte or count == 255:
 			if count > 1:
 				single_repeats[sindex] = (last_byte, count)
 			count = 1

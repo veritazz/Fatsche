@@ -1309,11 +1309,12 @@ static void update_enemies(void)
 			if (e->mtime)
 				break;
 
-			if (e->x >= e->dx) {
-				if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
+			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height)) {
+				if (e->x >= e->dx)
 					enemy_set_state(e, enemy_pop_state(e), 0);
-			} else
-				e->x++;
+				else
+					e->x++;
+			}
 
 			break;
 		case ENEMY_EFFECT:

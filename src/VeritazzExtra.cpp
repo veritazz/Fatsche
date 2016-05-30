@@ -82,9 +82,9 @@ void VeritazzExtra::drawBitmap(int16_t x, int16_t y, const uint8_t *img, uint8_t
 }
 
 void VeritazzExtra::drawImage(int16_t x, int16_t y, const uint8_t *img,
-                              const uint8_t *mask, uint8_t color)
+                              const uint8_t *mask, uint8_t flags)
 {
-	drawImageFrame(x, y, img, mask, 0, color);
+	drawImageFrame(x, y, img, mask, 0, flags);
 }
 
 uint8_t VeritazzExtra::nextData(uint16_t o)
@@ -223,8 +223,7 @@ void VeritazzExtra::unpackBytes(uint8_t *buf, uint16_t len)
 }
 
 void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
-                                    uint8_t w, uint8_t h, uint8_t color,
-                                    uint8_t flags)
+                                    uint8_t w, uint8_t h, uint8_t flags)
 {
 	// no need to dar at all of we're offscreen
 	if (x + w < 0 || x > WIDTH - 1 || y + h < 0 || y > HEIGHT - 1)
@@ -234,6 +233,7 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
 	int sRow = y / 8;
 	int sCol = 0;
 	int eCol = w - (x + w > WIDTH ? (x + w) % WIDTH : 0);
+	uint8_t bCol;
 	if (y < 0) {
 		sRow--;
 		yOffset = 8 - yOffset;
@@ -263,18 +263,26 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
 		if (bRow >= 0) {
 			for (int iCol = sCol; iCol < eCol; iCol++) {
 				if (iCol + x > (WIDTH - 1)) break;
-				if      (color == WHITE) this->sBuffer[ (bRow * WIDTH) + x + iCol ] |= buf[iCol] << yOffset;
-				else if (color == BLACK) this->sBuffer[ (bRow * WIDTH) + x + iCol ] &= ~(buf[iCol] << yOffset);
-				else                     this->sBuffer[ (bRow * WIDTH) + x + iCol ] ^= buf[iCol] << yOffset;
+				if (flags & __flag_v_mirror)
+					bCol = w - iCol - 1;
+				else
+					bCol = iCol;
+				if      (flags & __flag_white) this->sBuffer[ (bRow * WIDTH) + x + iCol ] |= buf[bCol] << yOffset;
+				else if (flags & __flag_black) this->sBuffer[ (bRow * WIDTH) + x + iCol ] &= ~(buf[bCol] << yOffset);
+				else                     this->sBuffer[ (bRow * WIDTH) + x + iCol ] ^= buf[bCol] << yOffset;
 			}
 		}
 
 		if (yOffset && bRow < (HEIGHT / 8) - 1 && bRow > -2) {
 			for (int iCol = sCol; iCol < eCol; iCol++) {
 				if (iCol + x > (WIDTH - 1)) break;
-				if      (color == WHITE) this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] |= buf[iCol] >> (8 - yOffset);
-				else if (color == BLACK) this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] &= ~(buf[iCol] >> (8 - yOffset));
-				else                     this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] ^= buf[iCol] >> (8 - yOffset);
+				if (flags & __flag_v_mirror)
+					bCol = w - iCol - 1;
+				else
+					bCol = iCol;
+				if      (flags & __flag_white) this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] |= buf[bCol] >> (8 - yOffset);
+				else if (flags & __flag_black) this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] &= ~(buf[bCol] >> (8 - yOffset));
+				else                     this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] ^= buf[bCol] >> (8 - yOffset);
 			}
 		}
 	}
@@ -282,25 +290,28 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
 
 void VeritazzExtra::drawImageFrame(int16_t x, int16_t y, const uint8_t *img,
                                    const uint8_t *mask, uint8_t nr,
-                                   uint8_t color)
+                                   uint8_t flags)
 {
 	uint16_t ioffset;
-	uint8_t w, h, iunpack;
+	uint8_t w, h;
+	uint8_t iflags = flags, mflags = flags;
 
 	w = img_width(img);
 	h = img_height(img);
 	ioffset = img_offset(img, nr);
-	iunpack = (ioffset & 0x8000) >> 8;
+	if (ioffset & 0x8000)
+		iflags |= __flag_unpack;
 	ioffset &= 0x7fff;
 
 	if (mask) {
 		uint16_t moffset;
-		uint8_t munpack;
 		moffset = img_offset(mask, nr);
-		munpack = (moffset & 0x8000) >> 8;
+		if (moffset & 0x8000)
+			mflags |= __flag_unpack;
 		moffset &= 0x7fff;
-		drawPackedImage(x, y, mask + moffset, w, h, BLACK, munpack);
+		drawPackedImage(x, y, mask + moffset, w, h,
+				(mflags & (~__color_mask)) | __flag_black);
 	}
 
-	drawPackedImage(x, y, img + ioffset, w, h, WHITE, iunpack);
+	drawPackedImage(x, y, img + ioffset, w, h, iflags);
 }

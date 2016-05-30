@@ -15,6 +15,8 @@ extern uint8_t get_inputs(void);
 #define __flag_white                 (1 << 4)
 #define __flag_unpack                (1 << 7)
 
+#define __color_mask                 (3 << 3)
+
 #define img_width(i)                 pgm_read_byte((i) + 0)
 #define img_height(i)                pgm_read_byte((i) + 1)
 #define img_offset(i, o)             pgm_read_word((i) + 2 + ((o) * 2))
@@ -29,14 +31,14 @@ public:
 	void drawBitmap(int16_t x, int16_t y, const uint8_t *img, uint8_t w, uint8_t h,
 			uint8_t color);
 	void drawImage(int16_t x, int16_t y, const uint8_t *bitmap,
-			const uint8_t *mask, uint8_t color);
+			const uint8_t *mask, uint8_t flags);
 	void drawImageFrame(int16_t x, int16_t y, const uint8_t *img,
 				   const uint8_t *mask, uint8_t nr,
-				   uint8_t color);
+				   uint8_t flags);
 
 private:
 	void drawPackedImage(int16_t x, int16_t y, const uint8_t *img, uint8_t w, uint8_t h,
-				uint8_t color, uint8_t flags);
+				uint8_t flags);
 
 	uint8_t nextData(uint16_t o);
 	void advanceNibbles(uint16_t nibbles);

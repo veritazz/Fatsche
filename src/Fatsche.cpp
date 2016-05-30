@@ -909,6 +909,18 @@ enum enemy_state {
 	ENEMY_MAX_STATE,
 };
 
+static const uint8_t enemy_sprite_flags[ENEMY_MAX_STATE] = {
+	__flag_white, /* not used, approach door */
+	__flag_white, /* walking left */
+	__flag_white | __flag_v_mirror, /* walking right */
+	__flag_white, /* TODO, effect */
+	__flag_white, /* attacking */
+	__flag_white, /* resting/swearing */
+	__flag_white, /* special */
+	__flag_white, /* not used, dying */
+	__flag_white, /* not used, dead */
+};
+
 static const uint8_t boss_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* not used, approach door */
 	0, /* walking left */
@@ -924,10 +936,10 @@ static const uint8_t boss_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 static const uint8_t vicious_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0, /* not used, approach door */
 	 0, /* walking left */
-	 4, /* walking right */
+	 0, /* walking right */
 	 0, /* TODO, effect */
-	 8, /* attacking */
-	12, /* resting/swearing */
+	 4, /* attacking */
+	 8, /* resting/swearing */
 	 0, /* special */
 	 0, /* not used, dying */
 	 0, /* not used, dead */
@@ -1559,7 +1571,7 @@ static void draw_digit(uint8_t x, uint8_t y, int8_t number)
 {
 	if (number < 0 || number > 9)
 		return;
-	blit_image_frame(x, y, numbers_3x5_img, NULL, number, __flag_none);
+	blit_image_frame(x, y, numbers_3x5_img, NULL, number, __flag_white);
 }
 
 static void draw_number(uint8_t x, uint8_t y, int32_t n, uint32_t divider, uint8_t flags)
@@ -1597,13 +1609,13 @@ static void draw_player(void)
 			 player_all_frames_img,
 			 NULL,
 			 player_frame_offsets[p->state] + p->frame,
-			 __flag_none);
+			 __flag_white);
 	if (p->poison)
 		blit_image(p->x + img_width(player_all_frames_img),
 			   0,
 			   poison_damage_img,
 			   NULL,
-			   __flag_none);
+			   __flag_white);
 }
 
 static void draw_enemies(void)
@@ -1631,7 +1643,7 @@ static void draw_enemies(void)
 					 enemy_sprites[e->id],
 					 enemy_masks[e->id],
 					 e->frame + e->sprite_offset,
-					 __flag_none);
+					 enemy_sprite_flags[e->state]);
 		}
 	} while (++i < MAX_ENEMIES);
 }
@@ -1650,7 +1662,7 @@ static void draw_powerups(void)
 					 powerups_img,
 					 powerups_mask_img,
 					 p->frame + (p->type * 4),
-					 __flag_none);
+					 __flag_white);
 			break;
 		case 2:
 			/* TODO remove this if numbers are fixed, then use images */
@@ -1709,7 +1721,7 @@ static void draw_scene(void)
 				 weapons_img,
 				 NULL,
 				 gd.ws.selected,
-				 __flag_none);
+				 __flag_white);
 		gd.ws.stime--;
 	}
 
@@ -1722,7 +1734,7 @@ static void draw_scene(void)
 			 scene_lamp_img,
 			 NULL,
 			 lamp_frame,
-			 __flag_none);
+			 __flag_white);
 }
 
 static void draw_bullets(void)
@@ -1741,7 +1753,7 @@ static void draw_bullets(void)
 					 bomb_splash_img,
 					 NULL,
 					 bs->frame,
-					 __flag_none);
+					 __flag_white);
 			break;
 		case BULLET_ACTIVE:
 			blit_image_frame(bs->x,
@@ -1749,7 +1761,7 @@ static void draw_bullets(void)
 					 water_bomb_air_img,
 					 water_bomb_air_mask_img,
 					 bs->frame,
-					 __flag_none);
+					 __flag_white);
 			break;
 		default:
 			break;
@@ -1767,7 +1779,7 @@ static void draw_score(void)
 static void draw_screen(void)
 {
 	/* draw main scene */
-	blit_image(0, 0, game_background_img, NULL, __flag_none);
+	blit_image(0, 0, game_background_img, NULL, __flag_white);
 	/* draw player */
 	draw_player();
 	/* draw powerups */
@@ -1804,6 +1816,7 @@ run(void)
 		start_timer(TIMER_500MS, FPS / 2);
 
 		gd.game_state = GAME_STATE_RUN_GAME;
+		delay(500);
 		break;
 	case GAME_STATE_RUN_GAME:
 		/* check for game over */
@@ -1861,7 +1874,7 @@ run(void)
 		draw_screen();
 		draw_rect(0, y - 2, WIDTH, height + 4);
 		draw_filled_rect(1, y - 1, WIDTH - 2, height + 2, BLACK);
-		blit_image(7, y, text_game_over_img, NULL, __flag_none);
+		blit_image(7, y, text_game_over_img, NULL, __flag_white);
 
 		if (y <= (HEIGHT - height) / 2) {
 			y++;
@@ -1875,6 +1888,7 @@ run(void)
 		init_timers();
 		rstate = PROGRAM_MAIN_MENU;
 		gd.game_state = GAME_STATE_INIT;
+		delay(500);
 		break;
 	}
 	return rstate;

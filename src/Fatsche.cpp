@@ -23,9 +23,9 @@ SimpleButtons buttons(arduboy);
 #define PLAYER_MAX_LIFE             256       /* initial players life */
 #define NR_WEAPONS                  4
 #define MAX_AMMO_W1                 16
-#define MAX_AMMO_W2                 12
-#define MAX_AMMO_W3                 8
-#define MAX_AMMO_W4                 4
+#define MAX_AMMO_W2                 4
+#define MAX_AMMO_W3                 2
+#define MAX_AMMO_W4                 1
 #define NR_BULLETS                  \
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
 #define WEAPON_COOLDOWN             (FPS / 3)
@@ -699,9 +699,30 @@ enum bullet_state {
 };
 
 /* damage per bullet */
-static const uint8_t bullet_damage[NR_WEAPONS] = {1, 2, 3, 4};
+static const uint8_t bullet_damage_table[NR_WEAPONS] = {1, 4, 1, 16};
+
+static uint8_t do_damage_from_table(struct bullet *b)
+{
+	return bullet_damage_table[b->weapon];
+}
+
+typedef uint8_t (*damage_fn_t)(struct bullet *b);
+
+static const damage_fn_t bullet_damage[NR_WEAPONS] = {
+	do_damage_from_table,
+	do_damage_from_table,
+	do_damage_from_table,
+	do_damage_from_table,
+};
+
 /* nr of frames weapon is effective on ground */
-static const uint8_t etime[NR_WEAPONS] = {FPS / 2, FPS / 2, FPS, FPS * 2};
+static const uint16_t etime[NR_WEAPONS] = {
+	FPS / 2, /* water */
+	FPS / 2, /* poo */
+	FPS * 3, /* oil */
+	FPS * 2, /* molotov */
+};
+
 /* maximum number of ammo per weapon */
 static const uint8_t max_ammo[NR_WEAPONS] = {
 	MAX_AMMO_W1,
@@ -824,7 +845,7 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 			hit = 1;
 		}
 		if (hit) {
-			damage += bullet_damage[bs->weapon];
+			damage += bullet_damage[bs->weapon](bs);
 			bs->state = BULLET_SPLASH;
 			bs->etime = FPS / 4;
 		}
@@ -1676,6 +1697,9 @@ static void draw_powerups(void)
 			case POWER_UP_SCORE:
 				number = 100;
 				break;
+			default:
+				number = 0;
+				break;
 			}
 			if (number)
 				draw_number(p->x, p->y, number, 100, 2);
@@ -1742,7 +1766,6 @@ static void draw_bullets(void)
 	uint8_t b = 0;
 	struct bullet *bs;
 
-	/* create a new bullet, do nothing if not possible */
 	do {
 		bs = &gd.ws.bs[b];
 		switch (bs->state) {

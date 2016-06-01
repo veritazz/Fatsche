@@ -30,8 +30,8 @@ SimpleButtons buttons(arduboy);
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
 #define WEAPON1_COOLDOWN            (FPS / 3)
 #define WEAPON2_COOLDOWN            (FPS / 3)
-#define WEAPON3_COOLDOWN            (FPS / 3)
-#define WEAPON4_COOLDOWN            (FPS / 3)
+#define WEAPON3_COOLDOWN            (FPS * 2)
+#define WEAPON4_COOLDOWN            (FPS * 5)
 #define KILLS_TILL_BOSS             2
 
 
@@ -356,6 +356,7 @@ struct enemy {
 	uint8_t pindex;
 	uint8_t sprite_offset;
 	uint8_t hit;
+	uint16_t slowdown;
 };
 
 struct door {
@@ -377,7 +378,7 @@ struct bullet {
 };
 
 struct weapon_states {
-	uint8_t cool_down[NR_WEAPONS];
+	uint16_t cool_down[NR_WEAPONS];
 	uint8_t selected:3; /* selected weapon */
 	uint8_t previous:3; /* previous selected weapon */
 	uint8_t direction:1;
@@ -715,6 +716,30 @@ enum bullet_state {
 /* damage per bullet */
 static const uint8_t bullet_damage_table[NR_WEAPONS] = {1, 4, 1, 16};
 
+/* nr of frames weapon is effective on ground */
+static const uint16_t etime[NR_WEAPONS] = {
+	FPS / 2, /* water */
+	FPS / 2, /* poo */
+	FPS * 3, /* oil */
+	FPS * 2, /* molotov */
+};
+
+/* maximum number of ammo per weapon */
+static const uint8_t max_ammo[NR_WEAPONS] = {
+	MAX_AMMO_W1,
+	MAX_AMMO_W2,
+	MAX_AMMO_W3,
+	MAX_AMMO_W4,
+};
+
+/* maximum number of ammo per weapon */
+static const uint8_t weapon_cool_down[NR_WEAPONS] = {
+	WEAPON1_COOLDOWN,
+	WEAPON2_COOLDOWN,
+	WEAPON3_COOLDOWN,
+	WEAPON4_COOLDOWN,
+};
+
 static uint8_t do_damage_from_table(struct bullet *b, struct rect *r)
 {
 	uint8_t hit = 0;
@@ -741,8 +766,21 @@ static uint8_t do_damage_from_table(struct bullet *b, struct rect *r)
 
 static uint8_t do_damage_from_explosion(struct bullet *b, struct rect *r)
 {
-	/* TODO: let molotov pass, it will only hit the ground */
-	return 16;
+	int16_t x1, x2;
+
+	if (b->state != BULLET_EFFECT)
+		return 0;
+
+	if (b->etime != etime[b->weapon])
+		return 0;
+
+	x1 = b->x - 30;
+	x2 = b->x + 30;
+
+	if (r->x >= x1 && r->x <= x2)
+		return bullet_damage_table[b->weapon];
+
+	return 0;
 }
 
 typedef uint8_t (*damage_fn_t)(struct bullet *b, struct rect *r);
@@ -753,31 +791,6 @@ static const damage_fn_t bullet_damage[NR_WEAPONS] = {
 	do_damage_from_table,
 	do_damage_from_explosion,
 };
-
-/* nr of frames weapon is effective on ground */
-static const uint16_t etime[NR_WEAPONS] = {
-	FPS / 2, /* water */
-	FPS / 2, /* poo */
-	FPS * 3, /* oil */
-	FPS * 2, /* molotov */
-};
-
-/* maximum number of ammo per weapon */
-static const uint8_t max_ammo[NR_WEAPONS] = {
-	MAX_AMMO_W1,
-	MAX_AMMO_W2,
-	MAX_AMMO_W3,
-	MAX_AMMO_W4,
-};
-
-/* maximum number of ammo per weapon */
-static const uint8_t weapon_cool_down[NR_WEAPONS] = {
-	WEAPON1_COOLDOWN,
-	WEAPON2_COOLDOWN,
-	WEAPON3_COOLDOWN,
-	WEAPON4_COOLDOWN,
-};
-
 
 #define DOOR_LANE			0
 #define UPPER_LANE			1
@@ -890,6 +903,32 @@ static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, 
 	} while (++b < NR_BULLETS);
 
 	return damage;
+}
+
+static void get_bullet_effect(uint8_t lane, struct enemy *e)
+{
+	int16_t x1, x2;
+	uint8_t b = 0;
+	struct bullet *bs;
+
+	do {
+		bs = &gd.ws.bs[b];
+		if (bs->lane != lane)
+			if (bs->lane != UPPER_LANE || lane != DOOR_LANE)
+				continue;
+		if (bs->weapon != 2)
+			continue;
+		if (bs->state != BULLET_EFFECT)
+			continue;
+
+		x1 = bs->x - 30;
+		x2 = bs->x + 30;
+
+		if (e->x >= x1 && e->x <= x2 && !e->slowdown) {
+			e->slowdown = FPS * 5;
+			break;
+		}
+	} while (++b < NR_BULLETS);
 }
 
 void select_weapon(int8_t up_down)
@@ -1331,6 +1370,9 @@ static void update_enemies(void)
 				}
 			}
 		}
+
+		get_bullet_effect(e->lane, e);
+
 		switch (e->state) {
 		case ENEMY_WALKING_LEFT:
 			if (e->mtime)
@@ -1448,7 +1490,11 @@ static void update_enemies(void)
 		/* next movement */
 		if (e->mtime == 0) {
 			if (e->state < ENEMY_DYING)
-				e->mtime = enemy_mtime[e->id];
+				if (e->slowdown) {
+					e->slowdown--;
+					e->mtime = enemy_mtime[e->id] * 8;
+				} else
+					e->mtime = enemy_mtime[e->id];
 			else
 				e->mtime = 0;
 		} else
@@ -1799,6 +1845,20 @@ static void draw_scene(void)
 			 __flag_white);
 }
 
+static const uint8_t *bullet_effect[NR_WEAPONS] = {
+	bomb_splash_img,
+	bomb_splash_img,
+	bomb_splash_img,
+	bomb_splash_img,
+};
+
+static const uint8_t *bullet_effect_mask[NR_WEAPONS] = {
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+};
+
 static void draw_bullets(void)
 {
 	uint8_t b = 0;
@@ -1808,6 +1868,13 @@ static void draw_bullets(void)
 		bs = &gd.ws.bs[b];
 		switch (bs->state) {
 		case BULLET_EFFECT:
+			blit_image_frame(bs->x,
+					 bs->ys,
+					 bullet_effect[bs->weapon],
+					 bullet_effect_mask[bs->weapon],
+					 bs->frame,
+					 __flag_white);
+			break;
 		case BULLET_SPLASH:
 			blit_image_frame(bs->x,
 					 bs->ys,

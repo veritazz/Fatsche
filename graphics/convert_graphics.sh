@@ -20,6 +20,7 @@ assets="mainscreen game_background enemy_little_girl water_bomb_air
 	arduboy_logo
 	text_game_over
 	text_boss_time
+	help_screen
 "
 
 # assets that have a mask layer

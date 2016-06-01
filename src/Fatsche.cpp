@@ -597,7 +597,11 @@ load(void)
 static uint8_t
 help(void)
 {
-	return PROGRAM_MAIN_MENU;
+	delay(500);
+	blit_image(0, 0, help_screen_img, NULL, __flag_white);
+	if (a())
+		return PROGRAM_MAIN_MENU;
+	return PROGRAM_SHOW_HELP;
 }
 
 /*---------------------------------------------------------------------------

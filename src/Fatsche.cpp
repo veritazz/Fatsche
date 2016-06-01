@@ -28,7 +28,10 @@ SimpleButtons buttons(arduboy);
 #define MAX_AMMO_W4                 1
 #define NR_BULLETS                  \
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
-#define WEAPON_COOLDOWN             (FPS / 3)
+#define WEAPON1_COOLDOWN            (FPS / 3)
+#define WEAPON2_COOLDOWN            (FPS / 3)
+#define WEAPON3_COOLDOWN            (FPS / 3)
+#define WEAPON4_COOLDOWN            (FPS / 3)
 #define KILLS_TILL_BOSS             2
 
 
@@ -374,7 +377,7 @@ struct bullet {
 };
 
 struct weapon_states {
-	uint8_t cool_down;
+	uint8_t cool_down[NR_WEAPONS];
 	uint8_t selected:3; /* selected weapon */
 	uint8_t previous:3; /* previous selected weapon */
 	uint8_t direction:1;
@@ -405,6 +408,13 @@ struct game_data {
 	struct door door;
 	struct weapon_states ws;
 	struct power_up power_ups[MAX_POWERUPS];
+};
+
+struct rect {
+	uint8_t x;
+	uint8_t y;
+	uint8_t w;
+	uint8_t h;
 };
 
 static struct game_data gd;
@@ -701,18 +711,43 @@ enum bullet_state {
 /* damage per bullet */
 static const uint8_t bullet_damage_table[NR_WEAPONS] = {1, 4, 1, 16};
 
-static uint8_t do_damage_from_table(struct bullet *b)
+static uint8_t do_damage_from_table(struct bullet *b, struct rect *r)
 {
+	uint8_t hit = 0;
+
+	if (b->state != BULLET_ACTIVE)
+		return 0;
+
+	/* check if it is a hit */
+	if (b->x >= r->x && b->x <= (r->x + r->w) && b->ys >= r->y && b->ys <= (r->y + r->h)) {
+		hit = 1;
+	}
+	if ((b->x + 4) >= r->x && (b->x + 4) <= (r->x + r->w) && (b->ys + 4) >= r->y && (b->ys + 4) <= (r->y + r->h)) {
+		hit = 1;
+	}
+
+	if (!hit)
+		return 0;
+
+	if (b->state == BULLET_ACTIVE)
+		b->etime = FPS / 4;
+	b->state = BULLET_SPLASH;
 	return bullet_damage_table[b->weapon];
 }
 
-typedef uint8_t (*damage_fn_t)(struct bullet *b);
+static uint8_t do_damage_from_explosion(struct bullet *b, struct rect *r)
+{
+	/* TODO: let molotov pass, it will only hit the ground */
+	return 16;
+}
+
+typedef uint8_t (*damage_fn_t)(struct bullet *b, struct rect *r);
 
 static const damage_fn_t bullet_damage[NR_WEAPONS] = {
 	do_damage_from_table,
 	do_damage_from_table,
 	do_damage_from_table,
-	do_damage_from_table,
+	do_damage_from_explosion,
 };
 
 /* nr of frames weapon is effective on ground */
@@ -731,6 +766,15 @@ static const uint8_t max_ammo[NR_WEAPONS] = {
 	MAX_AMMO_W4,
 };
 
+/* maximum number of ammo per weapon */
+static const uint8_t weapon_cool_down[NR_WEAPONS] = {
+	WEAPON1_COOLDOWN,
+	WEAPON2_COOLDOWN,
+	WEAPON3_COOLDOWN,
+	WEAPON4_COOLDOWN,
+};
+
+
 #define DOOR_LANE			0
 #define UPPER_LANE			1
 #define LOWER_LANE			2
@@ -746,10 +790,10 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 	if (gd.ws.ammo[weapon] == 0)
 		return 0;
 
-	if (gd.ws.cool_down)
+	if (gd.ws.cool_down[weapon])
 		return 0;
 
-	gd.ws.cool_down = WEAPON_COOLDOWN;
+	gd.ws.cool_down[weapon] = weapon_cool_down[weapon];
 
 	if (p->state != PLAYER_RESTS)
 		b = p->state;
@@ -792,9 +836,12 @@ static void update_bullets(void)
 	uint8_t b = 0, height;
 	struct bullet *bs;
 
-	if (gd.ws.cool_down)
-		gd.ws.cool_down--;
+	do {
+		if (gd.ws.cool_down[b])
+			gd.ws.cool_down[b]--;
+	} while (++b < NR_WEAPONS);
 
+	b = 0;
 	do {
 		bs = &gd.ws.bs[b];
 		if (bs->state == BULLET_INACTIVE)
@@ -826,29 +873,16 @@ static void update_bullets(void)
 
 static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
-	uint8_t b = 0, damage = 0, hit;
+	uint8_t b = 0, damage = 0;
 	struct bullet *bs;
+	struct rect r = {x, y, w, h};
 
 	do {
 		bs = &gd.ws.bs[b];
-		if (bs->state != BULLET_ACTIVE)
-			continue;
 		if (bs->lane != lane)
 			if (bs->lane != UPPER_LANE || lane != DOOR_LANE)
 				continue;
-		hit = 0;
-		/* check if it is a hit */
-		if (bs->x >= x && bs->x <= (x + w) && bs->ys >= y && bs->ys <= (y + h)) {
-			hit = 1;
-		}
-		if ((bs->x + 4) >= x && (bs->x + 4) <= (x + w) && (bs->ys + 4) >= y && (bs->ys + 4) <= (y + h)) {
-			hit = 1;
-		}
-		if (hit) {
-			damage += bullet_damage[bs->weapon](bs);
-			bs->state = BULLET_SPLASH;
-			bs->etime = FPS / 4;
-		}
+		damage += bullet_damage[bs->weapon](bs, &r);
 	} while (++b < NR_BULLETS);
 
 	return damage;

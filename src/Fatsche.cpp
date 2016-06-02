@@ -17,7 +17,7 @@ SimpleButtons buttons(arduboy);
  * game parameters
  *---------------------------------------------------------------------------*/
 #define FPS                         30        /* frame rate */
-#define MAX_ENEMIES                 5         /* max enemies on the scene */
+#define MAX_ENEMIES                 12        /* max enemies on the scene */
 #define ENEMIES_SPAWN_RATE          (FPS * 3) /* every 3 seconds */
 #define PLAYER_REST_TIMEOUT         (FPS * 5) /* players timeout for resting */
 #define PLAYER_MAX_LIFE             256       /* initial players life */
@@ -32,7 +32,6 @@ SimpleButtons buttons(arduboy);
 #define WEAPON2_COOLDOWN            (FPS / 3)
 #define WEAPON3_COOLDOWN            (FPS * 5)
 #define WEAPON4_COOLDOWN            (FPS * 10)
-#define KILLS_TILL_BOSS             2
 
 
 #define BULLET_FRAME_TIME           FPS / 10
@@ -361,7 +360,7 @@ struct enemy {
 
 struct door {
 	uint8_t under_attack:1;
-	uint8_t boss:1;
+	uint8_t boss:2;
 	struct enemy *attacker;
 	uint8_t boss_countdown;
 };
@@ -402,15 +401,16 @@ struct power_up {
 };
 
 struct stage {
-	uint8_t stage;
-	uint8_t kills;
-	uint8_t max_vicious;
-	uint8_t max_peaceful;
-	uint8_t max_thief;
+	int8_t kills;
+	uint8_t limits[3];
 };
 
 struct game_data {
+	uint8_t boss_time:1;
+	uint8_t stage_time:1;
+	uint8_t stage_nr;
 	struct stage stage;
+	uint8_t ecount[3];
 	struct menu menu;
 	struct player player;
 	enum game_states game_state;
@@ -750,7 +750,7 @@ static const uint8_t max_ammo[NR_WEAPONS] = {
 };
 
 /* maximum number of ammo per weapon */
-static const uint8_t weapon_cool_down[NR_WEAPONS] = {
+static const uint16_t weapon_cool_down[NR_WEAPONS] = {
 	WEAPON1_COOLDOWN,
 	WEAPON2_COOLDOWN,
 	WEAPON3_COOLDOWN,
@@ -986,13 +986,46 @@ static void init_weapons(void)
 }
 
 /*---------------------------------------------------------------------------
+ * stage handling
+ *---------------------------------------------------------------------------*/
+static const struct stage game_stages[4] = {
+	{ 10, 3, 2, 0},
+	{ 10, 3, 3, 1},
+	{ 10, 5, 3, 2},
+	{ 10, 5, 4, 2},
+};
+
+static void init_stage(void)
+{
+	struct stage *s = &gd.stage;
+
+	memcpy(s, &game_stages[0], sizeof(*s));
+}
+
+static void update_stage(void)
+{
+	struct stage *s = &gd.stage;
+
+	if (s->kills <= 0 && !gd.door.boss) {
+		gd.boss_time = 1;
+		gd.door.boss = 3;
+	}
+
+	if (gd.door.boss == 1) {
+		gd.stage_time = 1;
+		gd.door.boss = 0;
+		gd.stage_nr++;
+		memcpy(s, &game_stages[gd.stage_nr], sizeof(*s));
+	}
+}
+/*---------------------------------------------------------------------------
  * enemy handling
  *---------------------------------------------------------------------------*/
 enum enemy_types {
 	ENEMY_VICIOUS,
-	ENEMY_BOSS,
 	ENEMY_PEACEFUL,
 	ENEMY_THIEF,
+	ENEMY_BOSS,
 	ENEMY_MAX_TYPES,
 };
 
@@ -1184,34 +1217,39 @@ static const uint8_t *enemy_frame_reloads[ENEMY_MAX] = {
 	enemy_little_girl_frame_reloads,
 };
 
-static void enemy_generate_random(struct enemy *e)
+static uint8_t enemy_generate_random(struct enemy *e)
 {
 	uint8_t r = random8(100);
 	uint8_t id, type;
+	struct stage *s = &gd.stage;
 
-	if (!gd.door.boss_countdown && !gd.door.boss) {
-		gd.door.boss_countdown = KILLS_TILL_BOSS;
-		gd.door.boss = 1;
+	if (gd.door.boss == 3) {
+		gd.door.boss = 2;
 		id = ENEMY_BOSS1;
 		type = ENEMY_BOSS;
-	} else if (r < 9) {
+	} else if (r < 9 && (gd.ecount[ENEMY_PEACEFUL] < s->limits[ENEMY_PEACEFUL])) {
 		id = ENEMY_GRANDMA;
 		type = ENEMY_PEACEFUL;
-	} else if (r < 18) {
+	} else if (r < 18 && (gd.ecount[ENEMY_PEACEFUL] < s->limits[ENEMY_PEACEFUL])) {
 		id = ENEMY_LITTLE_GIRL;
 		type = ENEMY_PEACEFUL;
-	} else if (r < 30) {
+	} else if (r < 30 && (gd.ecount[ENEMY_VICIOUS] < s->limits[ENEMY_VICIOUS])) {
 		id = ENEMY_DRUNKEN_PUNK;
 		type = ENEMY_VICIOUS;
-	} else if (r < 60) {
+	} else if (r < 60 && (gd.ecount[ENEMY_THIEF] < s->limits[ENEMY_THIEF])) {
 		id = ENEMY_HACKER;
 		type = ENEMY_THIEF;
-	} else {
+	} else if  (gd.ecount[ENEMY_VICIOUS] < s->limits[ENEMY_VICIOUS]) {
 		id = ENEMY_RAIDER;
 		type = ENEMY_VICIOUS;
-	}
+	} else
+		return 0; // TODO this is odd
 	e->id = id;
 	e->type = type;
+	if (type < ENEMY_BOSS)
+		gd.ecount[type]++;
+
+	return 1;
 }
 
 static void enemy_flush_states(struct enemy *e)
@@ -1263,7 +1301,8 @@ static void spawn_new_enemies(void)
 		if (e->active)
 			continue;
 		memset(e, 0, sizeof(*e));
-		enemy_generate_random(e);
+		if (!enemy_generate_random(e))
+			break;
 		e->active = 1;
 		height = img_height(enemy_sprites[e->id]);
 		e->lane = 1 + random8(2);
@@ -1332,6 +1371,7 @@ static void update_enemies(void)
 	struct player *p = &gd.player;
 	struct door *d = &gd.door;
 	struct enemy *a;
+	struct stage *s = &gd.stage;
 
 	/* update and spawn enemies */
 	do {
@@ -1489,9 +1529,9 @@ static void update_enemies(void)
 			if (e->y == 0) {
 				e->active = 0;
 				if (e->type != ENEMY_BOSS && !d->boss)
-					d->boss_countdown--;
+					s->kills--;
 				if (e->type == ENEMY_BOSS)
-					d->boss = 0;
+					d->boss = 1;
 			} else
 				e->y--;
 			break;
@@ -1518,6 +1558,8 @@ static void update_enemies(void)
 			e->mtime--;
 		if (e->hit)
 			e->hit--;
+		if (e->active == 0 && e->type != ENEMY_BOSS)
+			gd.ecount[e->type]--;
 	} while (++i < MAX_ENEMIES);
 }
 
@@ -1525,7 +1567,6 @@ static void init_enemies(void)
 {
 	memset(&gd.door, 0, sizeof(gd.door));
 	memset(gd.enemies, 0, sizeof(gd.enemies));
-	gd.door.boss_countdown = KILLS_TILL_BOSS;
 
 	/* setup timer for enemy spawning */
 	setup_timer(TIMER_ENEMY_SPAWN, spawn_new_enemies);
@@ -1672,6 +1713,16 @@ static void update_scene(void)
 	/* TODO maybe just draw the blinky line */
 	if (timer_500ms_ticks & 1)
 		lamp_frame = random8(2);
+
+	/* TODO scroll in boss time */
+	if (gd.boss_time) {
+		gd.boss_time = 0;
+	}
+
+	/* TODO scroll in new stage */
+	if (gd.stage_time) {
+		gd.stage_time = 0;
+	}
 }
 
 /*---------------------------------------------------------------------------
@@ -1954,6 +2005,7 @@ run(void)
 		init_weapons();
 		init_enemies();
 		init_powerups();
+		init_stage();
 
 		/* setup general purpose 500ms counting timer */
 		timer_500ms_ticks = 0;
@@ -2009,6 +2061,8 @@ run(void)
 		update_scene();
 		/* update player */
 		update_player(dx, throws);
+		/* update stage */
+		update_stage();
 
 		draw_screen();
 

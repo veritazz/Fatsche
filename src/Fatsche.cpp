@@ -30,8 +30,8 @@ SimpleButtons buttons(arduboy);
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
 #define WEAPON1_COOLDOWN            (FPS / 3)
 #define WEAPON2_COOLDOWN            (FPS / 3)
-#define WEAPON3_COOLDOWN            (FPS * 2)
-#define WEAPON4_COOLDOWN            (FPS * 5)
+#define WEAPON3_COOLDOWN            (FPS * 5)
+#define WEAPON4_COOLDOWN            (FPS * 10)
 #define KILLS_TILL_BOSS             2
 
 
@@ -401,7 +401,16 @@ struct power_up {
 	uint16_t timeout;
 };
 
+struct stage {
+	uint8_t stage;
+	uint8_t kills;
+	uint8_t max_vicious;
+	uint8_t max_peaceful;
+	uint8_t max_thief;
+};
+
 struct game_data {
+	struct stage stage;
 	struct menu menu;
 	struct player player;
 	enum game_states game_state;
@@ -713,6 +722,13 @@ enum bullet_state {
 	BULLET_SPLASH,
 };
 
+enum weapon_type {
+	WEAPON_WATER,
+	WEAPON_POO,
+	WEAPON_OIL,
+	WEAPON_MOLOTOV,
+};
+
 /* damage per bullet */
 static const uint8_t bullet_damage_table[NR_WEAPONS] = {1, 4, 1, 16};
 
@@ -916,7 +932,7 @@ static void get_bullet_effect(uint8_t lane, struct enemy *e)
 		if (bs->lane != lane)
 			if (bs->lane != UPPER_LANE || lane != DOOR_LANE)
 				continue;
-		if (bs->weapon != 2)
+		if (bs->weapon != WEAPON_OIL)
 			continue;
 		if (bs->state != BULLET_EFFECT)
 			continue;

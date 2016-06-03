@@ -1048,7 +1048,6 @@ enum enemy_state {
 	ENEMY_APPROACH_DOOR,
 	ENEMY_WALKING_LEFT,
 	ENEMY_WALKING_RIGHT,
-	ENEMY_EFFECT,
 	ENEMY_ATTACKING,
 	ENEMY_RESTING_SWEARING,
 	ENEMY_SPECIAL,
@@ -1061,7 +1060,6 @@ static const uint8_t enemy_sprite_flags[ENEMY_MAX_STATE] = {
 	__flag_white, /* not used, approach door */
 	__flag_white, /* walking left */
 	__flag_white | __flag_v_mirror, /* walking right */
-	__flag_white, /* TODO, effect */
 	__flag_white, /* attacking */
 	__flag_white, /* resting/swearing */
 	__flag_white, /* special */
@@ -1073,7 +1071,6 @@ static const uint8_t boss_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* not used, approach door */
 	0, /* walking left */
 	0, /* walking right */
-	0, /* TODO, effect */
 	4, /* attacking */
 	8, /* resting/swearing */
 	0, /* special */
@@ -1085,7 +1082,6 @@ static const uint8_t vicious_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0, /* not used, approach door */
 	 0, /* walking left */
 	 0, /* walking right */
-	 0, /* TODO, effect */
 	 4, /* attacking */
 	 8, /* resting/swearing */
 	 0, /* special */
@@ -1097,7 +1093,6 @@ static const uint8_t peaceful_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* not used, approach door */
 	0, /* walking left */
 	0, /* walking right */
-	0, /* TODO, effect */
 	0, /* attacking */
 	4, /* resting/swearing */
 	0, /* special */
@@ -1187,7 +1182,6 @@ static const uint8_t enemy_default_frame_reloads[] = {
 	4, /* ENEMY_APPROACH_DOOR */
 	4, /* ENEMY_WALKING_LEFT */
 	4, /* ENEMY_WALKING_RIGHT */
-	4, /* ENEMY_EFFECT */
 	4, /* ENEMY_ATTACKING */
 	4, /* ENEMY_RESTING_SWEARING */
 	4, /* ENEMY_SPECIAL */
@@ -1199,7 +1193,6 @@ static const uint8_t enemy_little_girl_frame_reloads[] = {
 	 4, /* ENEMY_APPROACH_DOOR */
 	 4, /* ENEMY_WALKING_LEFT */
 	 4, /* ENEMY_WALKING_RIGHT */
-	 4, /* ENEMY_EFFECT */
 	 4, /* ENEMY_ATTACKING */
 	12, /* ENEMY_RESTING_SWEARING */
 	 4, /* ENEMY_SPECIAL */
@@ -1284,10 +1277,7 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 	e->state = state;
 	e->frame_reload = enemy_frame_reloads[e->id][e->state];
 
-	if (e->state != ENEMY_EFFECT)
-		e->frame = 0;
-	else
-		e->rtime = FPS / 2;
+	e->frame = 0;
 }
 
 static void spawn_new_enemies(void)
@@ -1416,7 +1406,7 @@ static void update_enemies(void)
 					p->score = 0;
 				enemy_set_state(e, ENEMY_DYING, 0);
 			} else {
-				if (e->state != ENEMY_EFFECT && e->state != ENEMY_SPECIAL && e->state != ENEMY_RESTING_SWEARING) {
+				if (e->state != ENEMY_SPECIAL && e->state != ENEMY_RESTING_SWEARING) {
 					switch (e->type) {
 					case ENEMY_PEACEFUL:
 						enemy_set_state(e, ENEMY_RESTING_SWEARING, 1);
@@ -1486,13 +1476,6 @@ static void update_enemies(void)
 					e->x++;
 			}
 
-			break;
-		case ENEMY_EFFECT:
-			if (e->rtime == 0) {
-				e->rtime = enemy_rtime[e->id];
-				enemy_set_state(e, enemy_pop_state(e), 0);
-			} else
-				e->rtime--;
 			break;
 		case ENEMY_ATTACKING:
 			/* do door damage */

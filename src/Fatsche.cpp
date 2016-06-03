@@ -32,9 +32,12 @@ SimpleButtons buttons(arduboy);
 #define WEAPON2_COOLDOWN            (FPS / 3)
 #define WEAPON3_COOLDOWN            (FPS * 5)
 #define WEAPON4_COOLDOWN            (FPS * 10)
-
+#define MAX_FLYING_NUMBERS          (MAX_ENEMIES + MAX_POWERUPS + 10)
 
 #define BULLET_FRAME_TIME           FPS / 10
+
+static void draw_number(uint8_t x, uint8_t y, int32_t n, uint32_t divider, uint8_t flags);
+
 /*---------------------------------------------------------------------------
  * program states
  *---------------------------------------------------------------------------*/
@@ -427,6 +430,13 @@ struct rect {
 	uint8_t h;
 };
 
+struct flying_number {
+	uint8_t active:1;
+	uint8_t y:7;
+	uint8_t x;
+	int16_t number;
+};
+
 static struct game_data gd;
 /*---------------------------------------------------------------------------
  * setup
@@ -440,6 +450,58 @@ setup(void)
 	arduboy.clear();
 	arduboy.display();
 	init_timers();
+}
+
+/*---------------------------------------------------------------------------
+ * flying numbers
+ *---------------------------------------------------------------------------*/
+static struct flying_number flying_numbers[MAX_FLYING_NUMBERS];
+
+static void init_flying_numbers(void)
+{
+	memset(flying_numbers, 0, sizeof(flying_numbers));
+}
+
+static void add_flying_number(uint8_t x, uint8_t y, int16_t number)
+{
+	uint8_t n = 0;
+
+	do {
+		if (!flying_numbers[n].active) {
+			flying_numbers[n].x = x;
+			flying_numbers[n].y = y;
+			flying_numbers[n].number = number;
+			flying_numbers[n].active = 1;
+			break;
+		}
+	} while (++n < MAX_FLYING_NUMBERS);
+}
+
+static void update_flying_numbers(void)
+{
+	uint8_t n = 0;
+
+	do {
+		if (flying_numbers[n].active) {
+			if (flying_numbers[n].y == 0)
+				flying_numbers[n].active = 0;
+			else
+				flying_numbers[n].y--;
+		}
+	} while (++n < MAX_FLYING_NUMBERS);
+}
+
+static void draw_flying_numbers(void)
+{
+	uint8_t n = 0;
+
+	do {
+		if (flying_numbers[n].active)
+			draw_number(flying_numbers[n].x,
+				    flying_numbers[n].y,
+				    flying_numbers[n].number,
+				    100, 2);
+	} while (++n < MAX_FLYING_NUMBERS);
 }
 /*---------------------------------------------------------------------------
  * main menu handling
@@ -805,7 +867,7 @@ typedef uint8_t (*damage_fn_t)(struct bullet *b, struct rect *r);
 static const damage_fn_t bullet_damage[NR_WEAPONS] = {
 	do_damage_from_table,
 	do_damage_from_table,
-	do_damage_from_table,
+	do_damage_from_explosion,
 	do_damage_from_explosion,
 };
 
@@ -989,6 +1051,7 @@ static void init_weapons(void)
  * stage handling
  *---------------------------------------------------------------------------*/
 static const struct stage game_stages[4] = {
+//	{ 10, 0, 0, 1},
 	{ 10, 3, 2, 0},
 	{ 10, 3, 3, 1},
 	{ 10, 5, 3, 2},
@@ -1282,7 +1345,7 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 
 static void spawn_new_enemies(void)
 {
-	uint8_t i = 0, height;
+	uint8_t i = 0, height, width;
 	struct enemy *e;
 
 	/* update and spawn enemies */
@@ -1296,12 +1359,14 @@ static void spawn_new_enemies(void)
 		e->active = 1;
 		height = img_height(enemy_sprites[e->id]);
 		e->lane = 1 + random8(2);
-		if (e->lane == 1) {
-			uint8_t width;
+		if (e->lane == 1 && e->type == ENEMY_VICIOUS) {
 			width = img_width(enemy_sprites[e->id]);
 			e->pee = random8(1);
 			e->pee_x = WIDTH - width * 2 - random8(64);
 		}
+		/* calculate point where to start hacking */
+		if (e->type == ENEMY_THIEF)
+			e->dx = random8(WIDTH - width);
 		e->y = lane_y[e->lane] - height;
 		e->x = WIDTH;
 		e->mtime = enemy_mtime[e->id];
@@ -1431,6 +1496,10 @@ static void update_enemies(void)
 				if (e->x == (6 + lane_y[e->lane] - lane_y[DOOR_LANE]))
 					enemy_set_state(e, ENEMY_APPROACH_DOOR, 1);
 				break;
+			case ENEMY_THIEF:
+				if (e->x == e->dx)
+					enemy_set_state(e, ENEMY_SPECIAL, 0);
+				break;
 			default:
 				/* peaceful enemies just pass by */
 				if (e->x == -width)
@@ -1490,6 +1559,16 @@ static void update_enemies(void)
 				if (enemy_pee_pee_done(e))
 					enemy_set_state(e, enemy_pop_state(e), 0);
 				break;
+			case ENEMY_THIEF:
+				if (e->rtime == 0) {
+					e->rtime = enemy_rtime[e->id];
+					p->score -= 5;
+					add_flying_number(e->x, e->y, -5);
+					if (p->score < 0)
+						p->score = 0;
+				} else
+					e->rtime--;
+				break;
 			}
 			break;
 		case ENEMY_RESTING_SWEARING:
@@ -1507,16 +1586,12 @@ static void update_enemies(void)
 				enemy_set_state(e, ENEMY_DEAD, 0);
 			break;
 		case ENEMY_DEAD:
-			if (e->mtime)
-				break;
-			if (e->y == 0) {
-				e->active = 0;
-				if (e->type != ENEMY_BOSS && !d->boss)
-					s->kills--;
-				if (e->type == ENEMY_BOSS)
-					d->boss = 1;
-			} else
-				e->y--;
+			e->active = 0;
+			if (e->type != ENEMY_BOSS && !d->boss)
+				s->kills--;
+			if (e->type == ENEMY_BOSS)
+				d->boss = 1;
+			add_flying_number(e->x, e->y, enemy_score[e->id]);
 			break;
 		}
 		/* next animation */
@@ -1604,52 +1679,44 @@ static void update_powerups(void)
 
 	do {
 		pu = &gd.power_ups[i];
-		switch (pu->active) {
-		case 1:
-			pu->timeout--;
-			if (!pu->timeout) {
-				pu->active = 0;
-				start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
-				continue;
-			}
-			/* check if hit by player */
-			if (get_bullet_damage(pu->lane, pu->x, pu->y, width, height)) {
-				pu->active++;
-				switch (pu->type) {
-				case POWER_UP_LIFE:
-					p->life += 32;
-					if (p->life > PLAYER_MAX_LIFE)
-						p->life = PLAYER_MAX_LIFE;
-					break;
-				case POWER_UP_POISON:
-					player_set_poison();
-					break;
-				case POWER_UP_SCORE:
-					p->score += 100;
-					break;
-				}
-			}
-
-			if (pu->atime) {
-				pu->atime--;
-				continue;
-			}
-
-			pu->atime = FPS / 4;
-			pu->frame++;
-			if (pu->frame == 4)
-				pu->frame = 0;
-			break;
-		case 2:
-			if (pu->y == 0) {
-				start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
-				pu->active = 0;
-			} else
-				pu->y--;
-			break;
-		default:
-			break;
+		if (!pu->active)
+			continue;
+		pu->timeout--;
+		if (!pu->timeout) {
+			pu->active = 0;
+			start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
+			continue;
 		}
+		/* check if hit by player */
+		if (get_bullet_damage(pu->lane, pu->x, pu->y, width, height)) {
+			pu->active = 0;
+			start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
+			switch (pu->type) {
+			case POWER_UP_LIFE:
+				p->life += 32;
+				add_flying_number(pu->x, pu->x, 32);
+				if (p->life > PLAYER_MAX_LIFE)
+					p->life = PLAYER_MAX_LIFE;
+				break;
+			case POWER_UP_POISON:
+				player_set_poison();
+				break;
+			case POWER_UP_SCORE:
+				p->score += 100;
+				add_flying_number(pu->x, pu->x, 100);
+				break;
+			}
+		}
+
+		if (pu->atime) {
+			pu->atime--;
+			continue;
+		}
+
+		pu->atime = FPS / 4;
+		pu->frame++;
+		if (pu->frame == 4)
+			pu->frame = 0;
 	} while (++i < MAX_POWERUPS);
 }
 
@@ -1776,24 +1843,14 @@ static void draw_player(void)
 
 static void draw_enemies(void)
 {
-	uint8_t i = 0, show;
+	uint8_t i = 0;
 	struct enemy *e;
 
 	do {
 		e = &gd.enemies[i];
 		if (!e->active)
 			continue;
-		show = 0;
-		switch (e->state) {
-		case ENEMY_DEAD:
-			/* draw score */
-			draw_number(e->x, e->y, enemy_score[e->id], 100, 2);
-			break;
-		default:
-			show = 1;
-			break;
-		}
-		if (show && !(e->hit & 1)) {
+		if (!(e->hit & 1)) {
 			blit_image_frame(e->x,
 					 e->y,
 					 enemy_sprites[e->id],
@@ -1806,42 +1863,18 @@ static void draw_enemies(void)
 
 static void draw_powerups(void)
 {
-	uint8_t i = 0, number;
+	uint8_t i = 0;
 	struct power_up *p;
 
 	do {
 		p = &gd.power_ups[i];
-		switch (p->active) {
-		case 1:
+		if (p->active)
 			blit_image_frame(p->x,
 					 p->y,
 					 powerups_img,
 					 powerups_mask_img,
 					 p->frame + (p->type * 4),
 					 __flag_white);
-			break;
-		case 2:
-			/* TODO remove this if numbers are fixed, then use images */
-			switch (p->type) {
-			case POWER_UP_LIFE:
-				number = 32;
-				break;
-			case POWER_UP_POISON:
-				number = 0;
-				break;
-			case POWER_UP_SCORE:
-				number = 100;
-				break;
-			default:
-				number = 0;
-				break;
-			}
-			if (number)
-				draw_number(p->x, p->y, number, 100, 2);
-			break;
-		default:
-			break;
-		}
 	} while (++i < MAX_POWERUPS);
 }
 
@@ -1967,6 +2000,8 @@ static void draw_screen(void)
 	draw_enemies();
 	/* update animations */
 	draw_bullets();
+	/* update flying numbers */
+	draw_flying_numbers();
 	/* draw new score */
 	draw_score();
 	/* draw scene */
@@ -1983,6 +2018,7 @@ run(void)
 
 	switch (gd.game_state) {
 	case GAME_STATE_INIT:
+		init_flying_numbers();
 		init_timers();
 		init_player();
 		init_weapons();
@@ -2046,6 +2082,8 @@ run(void)
 		update_player(dx, throws);
 		/* update stage */
 		update_stage();
+		/* update flying numbers */
+		update_flying_numbers();
 
 		draw_screen();
 

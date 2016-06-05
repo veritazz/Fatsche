@@ -33,7 +33,7 @@ SimpleButtons buttons(arduboy);
 #define WEAPON3_COOLDOWN            (FPS * 5)
 #define WEAPON4_COOLDOWN            (FPS * 10)
 #define MAX_FLYING_NUMBERS          (MAX_ENEMIES + MAX_POWERUPS + 10)
-
+#define MAX_STAGES                  4
 #define BULLET_FRAME_TIME           FPS / 10
 
 static void draw_number(uint8_t x, uint8_t y, int32_t n, uint32_t divider, uint8_t flags);
@@ -329,6 +329,7 @@ struct player {
 enum game_states {
 	GAME_STATE_INIT = 0,
 	GAME_STATE_RUN_GAME,
+	GAME_STATE_WON,
 	GAME_STATE_OVER,
 	GAME_STATE_CLEANUP,
 };
@@ -365,7 +366,6 @@ struct door {
 	uint8_t under_attack:1;
 	uint8_t boss:2;
 	struct enemy *attacker;
-	uint8_t boss_countdown;
 };
 
 struct bullet {
@@ -452,6 +452,96 @@ setup(void)
 	init_timers();
 }
 
+/*---------------------------------------------------------------------------
+ * bump tables
+ *---------------------------------------------------------------------------*/
+
+struct bumping_img {
+	uint8_t x;
+	int16_t y;
+	int16_t velocity;
+	int16_t gravity;
+	uint8_t i;
+};
+
+static int16_t ye;
+static const int16_t velocities[] = {
+	 8 << 8,
+	-3 << 8,
+	 4 << 8,
+	-2 << 8,
+	 2 << 8,
+	-1 << 8,
+	 1 << 8,
+	 0,
+};
+
+static void init_bump(struct bumping_img *bi, uint8_t x, int8_t y, int16_t gravity)
+{
+	bi->x = x;
+	bi->y = y << 8;
+	bi->velocity = velocities[0];
+	bi->gravity = gravity;
+	bi->i = 0;
+}
+
+static void init_img_bump(int8_t y)
+{
+	ye = y << 8;
+}
+
+static uint8_t img_bump(struct bumping_img *bi, const uint8_t *img, uint8_t frame)
+{
+	blit_image_frame(bi->x,
+			 (int8_t)(bi->y >> 8),
+			 img,
+			 img,
+			 frame,
+			 __flag_white);
+
+	if (bi->i == 7)
+		return 1;
+
+	if (bi->y == ye && ((int8_t)(velocities[bi->i] >> 8)) > 0) {
+		bi->i++;
+		bi->velocity = velocities[bi->i];
+	} else if (((int8_t)(bi->velocity >> 8)) >= 0 && ((int8_t)(velocities[bi->i] >> 8)) < 0) {
+		bi->i++;
+		bi->velocity = velocities[bi->i];
+	}
+
+	bi->y += bi->velocity;
+	if (bi->y > ye)
+		bi->y = ye;
+	bi->velocity += bi->gravity;
+
+	return 0;
+}
+/*---------------------------------------------------------------------------
+ * text printing functions
+ *---------------------------------------------------------------------------*/
+static void print_char(const char c)
+{
+}
+
+static void print_text(const char *t, uint8_t x, uint8_t y)
+{
+	uint8_t cx, cy;
+	char c;
+
+	cx = x;
+	cy = y;
+#if 0
+	do {
+		c = pgm_read_byte(t);
+		blit_image(cx,
+			   cy,
+			   characters_3x4_img,
+			   NULL,
+			   __flag_white);
+	} while (*++t != 
+#endif
+}
 /*---------------------------------------------------------------------------
  * flying numbers
  *---------------------------------------------------------------------------*/
@@ -1050,8 +1140,7 @@ static void init_weapons(void)
 /*---------------------------------------------------------------------------
  * stage handling
  *---------------------------------------------------------------------------*/
-static const struct stage game_stages[4] = {
-//	{ 10, 0, 0, 1},
+static const struct stage game_stages[MAX_STAGES] = {
 	{ 10, 3, 2, 0},
 	{ 10, 3, 3, 1},
 	{ 10, 5, 3, 2},
@@ -1074,7 +1163,7 @@ static void update_stage(void)
 		gd.door.boss = 3;
 	}
 
-	if (gd.door.boss == 1) {
+	if (gd.door.boss == 1 && gd.stage_nr < MAX_STAGES) {
 		gd.stage_time = 1;
 		gd.door.boss = 0;
 		gd.stage_nr++;
@@ -1223,7 +1312,7 @@ static const int16_t enemy_score[ENEMY_MAX] = {
 
 static const uint8_t *enemy_sprites[ENEMY_MAX] = {
 	enemy_raider_img,
-	enemy_dummy1_img,
+	enemy_drunken_punk_img,
 	enemy_dummy2_img,
 	enemy_boss_img,
 	enemy_boss_dummy1_img,
@@ -1233,7 +1322,7 @@ static const uint8_t *enemy_sprites[ENEMY_MAX] = {
 
 static const uint8_t *enemy_masks[ENEMY_MAX] = {
 	enemy_raider_mask_img,
-	enemy_dummy1_mask_img,
+	enemy_drunken_punk_mask_img,
 	enemy_dummy2_mask_img,
 	enemy_boss_mask_img,
 	enemy_boss_dummy1_mask_img,
@@ -1787,6 +1876,12 @@ static int check_game_over(void)
 	return 0;
 }
 
+static int check_win_game(void)
+{
+	if (gd.stage_nr == MAX_STAGES)
+		return 1;
+	return 0;
+}
 /*---------------------------------------------------------------------------
  * rendering functions
  *---------------------------------------------------------------------------*/
@@ -2014,7 +2109,7 @@ run(void)
 	uint8_t throws = 0;
 	int8_t dx = 0;
 	uint8_t rstate = PROGRAM_RUN_GAME;
-	static int8_t y;
+	struct bumping_img *bi = (struct bumping_img *)&flying_numbers[0];
 
 	switch (gd.game_state) {
 	case GAME_STATE_INIT:
@@ -2025,6 +2120,7 @@ run(void)
 		init_enemies();
 		init_powerups();
 		init_stage();
+		init_img_bump(25);
 
 		/* setup general purpose 500ms counting timer */
 		timer_500ms_ticks = 0;
@@ -2038,8 +2134,20 @@ run(void)
 		/* check for game over */
 		if (check_game_over()) {
 			init_timers();
-			y = -img_height(text_game_over_img);
 			gd.game_state = GAME_STATE_OVER;
+			init_bump(&bi[0], 5, 0, 128);
+			init_bump(&bi[1], 5 + 14, -20, 100);
+			init_bump(&bi[2], 5 + 2 * 14, -10, 64);
+			init_bump(&bi[3], 5 + 3 * 14, -5, 80);
+			init_bump(&bi[4], 10 + 4 * 14, -7, 70);
+			init_bump(&bi[5], 10 + 5 * 14, -30, 110);
+			init_bump(&bi[6], 10 + 6 * 14, -15, 90);
+			init_bump(&bi[7], 10 + 7 * 14, -12, 120);
+			break;
+		}
+
+		if (check_win_game()) {
+			gd.game_state = GAME_STATE_WON;
 			break;
 		}
 
@@ -2088,20 +2196,29 @@ run(void)
 		draw_screen();
 
 		break;
-	case GAME_STATE_OVER: {
-		uint8_t height = img_height(text_game_over_img);
-
-		draw_screen();
-		draw_rect(0, y - 2, WIDTH, height + 4);
-		draw_filled_rect(1, y - 1, WIDTH - 2, height + 2, BLACK);
-		blit_image(7, y, text_game_over_img, NULL, __flag_white);
-
-		if (y <= (HEIGHT - height) / 2) {
-			y++;
-		} else {
+	case GAME_STATE_WON: {
+		/* print score */
+		struct player *p = &gd.player;
+		draw_number(10, 30, p->score, 1000000, 1);
+		delay(500);
+		if (a())
+			gd.game_state = GAME_STATE_CLEANUP;
+		break;
+	}
+	case GAME_STATE_OVER:
+	{
+		uint8_t ret = 0;
+		ret += img_bump(&bi[0], characters_13x16_img, 0);
+		ret += img_bump(&bi[1], characters_13x16_img, 1);
+		ret += img_bump(&bi[2], characters_13x16_img, 2);
+		ret += img_bump(&bi[3], characters_13x16_img, 3);
+		ret += img_bump(&bi[4], characters_13x16_img, 4);
+		ret += img_bump(&bi[5], characters_13x16_img, 5);
+		ret += img_bump(&bi[6], characters_13x16_img, 3);
+		ret += img_bump(&bi[7], characters_13x16_img, 6);
+		if (ret == 8)
 			if (a())
 				gd.game_state = GAME_STATE_CLEANUP;
-		}
 		break;
 	}
 	case GAME_STATE_CLEANUP:

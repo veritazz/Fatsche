@@ -36,6 +36,22 @@ SimpleButtons buttons(arduboy);
 #define MAX_STAGES                  4
 #define BULLET_FRAME_TIME           FPS / 10
 
+#define CHAR_G                      0
+#define CHAR_A                      1
+#define CHAR_M                      2
+#define CHAR_E                      3
+#define CHAR_O                      4
+#define CHAR_V                      5
+#define CHAR_R                      6
+#define CHAR_B                      7
+#define CHAR_S                      8
+#define CHAR_T                      9
+#define CHAR_I                      10
+#define CHAR_1                      11
+#define CHAR_2                      12
+#define CHAR_3                      13
+#define CHAR_4                      14
+
 static void draw_number(uint8_t x, uint8_t y, int32_t n, uint32_t divider, uint8_t flags);
 
 /*---------------------------------------------------------------------------
@@ -409,18 +425,19 @@ struct stage {
 };
 
 struct game_data {
-	uint8_t boss_time:1;
-	uint8_t stage_time:1;
+	struct menu menu;
+	uint8_t dummy[80 - sizeof(struct menu)];
+	uint8_t boss_time;
+	uint8_t stage_time;
 	uint8_t stage_nr;
 	struct stage stage;
 	uint8_t ecount[3];
-	struct menu menu;
 	struct player player;
-	enum game_states game_state;
 	struct enemy enemies[MAX_ENEMIES];
 	struct door door;
 	struct weapon_states ws;
 	struct power_up power_ups[MAX_POWERUPS];
+	enum game_states game_state;
 };
 
 struct rect {
@@ -465,7 +482,7 @@ struct bumping_img {
 };
 
 static int16_t ye;
-static const int16_t velocities[] = {
+static const int16_t velocities[] PROGMEM = {
 	 8 << 8,
 	-3 << 8,
 	 4 << 8,
@@ -480,7 +497,7 @@ static void init_bump(struct bumping_img *bi, uint8_t x, int8_t y, int16_t gravi
 {
 	bi->x = x;
 	bi->y = y << 8;
-	bi->velocity = velocities[0];
+	bi->velocity = pgm_read_word(&velocities[0]);
 	bi->gravity = gravity;
 	bi->i = 0;
 }
@@ -492,6 +509,9 @@ static void init_img_bump(int8_t y)
 
 static uint8_t img_bump(struct bumping_img *bi, const uint8_t *img, uint8_t frame)
 {
+	int16_t velocity = pgm_read_word(&velocities[bi->i]);
+
+	/* TODO only draw if y changed */
 	blit_image_frame(bi->x,
 			 (int8_t)(bi->y >> 8),
 			 img,
@@ -502,12 +522,12 @@ static uint8_t img_bump(struct bumping_img *bi, const uint8_t *img, uint8_t fram
 	if (bi->i == 7)
 		return 1;
 
-	if (bi->y == ye && ((int8_t)(velocities[bi->i] >> 8)) > 0) {
+	if (bi->y == ye && ((int8_t)(velocity >> 8)) > 0) {
 		bi->i++;
-		bi->velocity = velocities[bi->i];
-	} else if (((int8_t)(bi->velocity >> 8)) >= 0 && ((int8_t)(velocities[bi->i] >> 8)) < 0) {
+		bi->velocity = velocity;
+	} else if (((int8_t)(bi->velocity >> 8)) >= 0 && ((int8_t)(velocity >> 8)) < 0) {
 		bi->i++;
-		bi->velocity = velocities[bi->i];
+		bi->velocity = velocity;
 	}
 
 	bi->y += bi->velocity;
@@ -516,6 +536,31 @@ static uint8_t img_bump(struct bumping_img *bi, const uint8_t *img, uint8_t fram
 	bi->velocity += bi->gravity;
 
 	return 0;
+}
+
+static void init_8_char_img_bump(void)
+{
+	struct bumping_img *bi = (struct bumping_img *)&gd;
+	init_bump(&bi[0], 5, 0, 128);
+	init_bump(&bi[1], 5 + 14, -20, 100);
+	init_bump(&bi[2], 5 + 2 * 14, -10, 64);
+	init_bump(&bi[3], 5 + 3 * 14, -5, 80);
+	init_bump(&bi[4], 10 + 4 * 14, -7, 70);
+	init_bump(&bi[5], 10 + 5 * 14, -30, 110);
+	init_bump(&bi[6], 10 + 6 * 14, -15, 90);
+	init_bump(&bi[7], 10 + 7 * 14, -12, 120);
+}
+
+static void init_stage_text(void)
+{
+	struct bumping_img *bi = (struct bumping_img *)&gd;
+	init_bump(&bi[0], 20, 0, 128);
+	init_bump(&bi[1], 20 + 14, -20, 100);
+	init_bump(&bi[2], 20 + 2 * 14, -10, 64);
+	init_bump(&bi[3], 20 + 3 * 14, -5, 80);
+	init_bump(&bi[4], 20 + 4 * 14, -7, 70);
+	init_bump(&bi[5], 25 + 5 * 14, -30, 110);
+	gd.stage_time = FPS;
 }
 /*---------------------------------------------------------------------------
  * text printing functions
@@ -1140,7 +1185,7 @@ static void init_weapons(void)
 /*---------------------------------------------------------------------------
  * stage handling
  *---------------------------------------------------------------------------*/
-static const struct stage game_stages[MAX_STAGES] = {
+static const struct stage game_stages[MAX_STAGES] PROGMEM = {
 	{ 10, 3, 2, 0},
 	{ 10, 3, 3, 1},
 	{ 10, 5, 3, 2},
@@ -1150,8 +1195,12 @@ static const struct stage game_stages[MAX_STAGES] = {
 static void init_stage(void)
 {
 	struct stage *s = &gd.stage;
-
+#ifdef HOST_TEST
 	memcpy(s, &game_stages[0], sizeof(*s));
+#else
+	memcpy_P(s, &game_stages[0], sizeof(*s));
+#endif
+	init_stage_text();
 }
 
 static void update_stage(void)
@@ -1159,15 +1208,20 @@ static void update_stage(void)
 	struct stage *s = &gd.stage;
 
 	if (s->kills <= 0 && !gd.door.boss) {
-		gd.boss_time = 1;
+		init_8_char_img_bump();
+		gd.boss_time = FPS;
 		gd.door.boss = 3;
 	}
 
 	if (gd.door.boss == 1 && gd.stage_nr < MAX_STAGES) {
-		gd.stage_time = 1;
+		init_stage_text();
 		gd.door.boss = 0;
 		gd.stage_nr++;
+#ifdef HOST_TEST
 		memcpy(s, &game_stages[gd.stage_nr], sizeof(*s));
+#else
+		memcpy_P(s, &game_stages[gd.stage_nr], sizeof(*s));
+#endif
 	}
 }
 /*---------------------------------------------------------------------------
@@ -1208,7 +1262,7 @@ enum enemy_state {
 	ENEMY_MAX_STATE,
 };
 
-static const uint8_t enemy_sprite_flags[ENEMY_MAX_STATE] = {
+static const uint8_t enemy_sprite_flags[ENEMY_MAX_STATE] PROGMEM = {
 	__flag_white, /* not used, approach door */
 	__flag_white, /* walking left */
 	__flag_white | __flag_v_mirror, /* walking right */
@@ -1270,7 +1324,7 @@ static const int8_t enemy_life[ENEMY_MAX] = {
 	16, 16, 16, 64, 64, 32, 32,
 };
 
-static const int8_t enemy_mtime[ENEMY_MAX] = {
+static const int8_t enemy_mtime[ENEMY_MAX] PROGMEM = {
 	FPS / 20,
 	FPS / 20,
 	FPS / 20,
@@ -1280,7 +1334,7 @@ static const int8_t enemy_mtime[ENEMY_MAX] = {
 	FPS / 3,
 };
 
-static const int8_t enemy_rtime[ENEMY_MAX] = {
+static const int8_t enemy_rtime[ENEMY_MAX] PROGMEM = {
 	FPS * 2,
 	FPS,
 	FPS,
@@ -1290,7 +1344,7 @@ static const int8_t enemy_rtime[ENEMY_MAX] = {
 	0,
 };
 
-static const int8_t enemy_atime[ENEMY_MAX] = {
+static const int8_t enemy_atime[ENEMY_MAX] PROGMEM = {
 	FPS / 5,
 	FPS / 5,
 	FPS / 5,
@@ -1300,7 +1354,7 @@ static const int8_t enemy_atime[ENEMY_MAX] = {
 	FPS / 5,
 };
 
-static const int16_t enemy_score[ENEMY_MAX] = {
+static const int16_t enemy_score[ENEMY_MAX] PROGMEM = {
 	10,
 	10,
 	10,
@@ -1447,9 +1501,9 @@ static void spawn_new_enemies(void)
 			break;
 		e->active = 1;
 		height = img_height(enemy_sprites[e->id]);
+		width = img_width(enemy_sprites[e->id]);
 		e->lane = 1 + random8(2);
 		if (e->lane == 1 && e->type == ENEMY_VICIOUS) {
-			width = img_width(enemy_sprites[e->id]);
 			e->pee = random8(1);
 			e->pee_x = WIDTH - width * 2 - random8(64);
 		}
@@ -1458,9 +1512,9 @@ static void spawn_new_enemies(void)
 			e->dx = random8(WIDTH - width);
 		e->y = lane_y[e->lane] - height;
 		e->x = WIDTH;
-		e->mtime = enemy_mtime[e->id];
-		e->rtime = enemy_rtime[e->id];
-		e->atime = enemy_atime[e->id];
+		e->mtime = pgm_read_byte(&enemy_mtime[e->id]);
+		e->rtime = pgm_read_byte(&enemy_rtime[e->id]);
+		e->atime = pgm_read_byte(&enemy_atime[e->id]);
 		e->life = enemy_life[e->id];
 		e->damage = enemy_damage[e->id];
 		enemy_set_state(e, ENEMY_WALKING_LEFT, 0);
@@ -1555,7 +1609,7 @@ static void update_enemies(void)
 				}
 				e->atime = FPS;
 
-				p->score += enemy_score[e->id];
+				p->score += (int16_t)pgm_read_word(&enemy_score[e->id]);
 				if (p->score < 0)
 					p->score = 0;
 				enemy_set_state(e, ENEMY_DYING, 0);
@@ -1650,7 +1704,7 @@ static void update_enemies(void)
 				break;
 			case ENEMY_THIEF:
 				if (e->rtime == 0) {
-					e->rtime = enemy_rtime[e->id];
+					e->rtime = pgm_read_byte(&enemy_rtime[e->id]);
 					p->score -= 5;
 					add_flying_number(e->x, e->y, -5);
 					if (p->score < 0)
@@ -1665,7 +1719,7 @@ static void update_enemies(void)
 				if (e->frame < e->frame_reload - 1)
 					break;
 			if (e->rtime == 0) {
-				e->rtime = enemy_rtime[e->id];
+				e->rtime = pgm_read_byte(&enemy_rtime[e->id]);
 				enemy_set_state(e, enemy_pop_state(e), 0);
 			} else
 				e->rtime--;
@@ -1680,12 +1734,12 @@ static void update_enemies(void)
 				s->kills--;
 			if (e->type == ENEMY_BOSS)
 				d->boss = 1;
-			add_flying_number(e->x, e->y, enemy_score[e->id]);
+			add_flying_number(e->x, e->y, (int16_t)pgm_read_word(&enemy_score[e->id]));
 			break;
 		}
 		/* next animation */
 		if (e->atime == 0) {
-			e->atime = enemy_atime[e->id];
+			e->atime = pgm_read_byte(&enemy_atime[e->id]);
 			e->frame++;
 			if (e->frame == e->frame_reload)
 				e->frame = 0;
@@ -1694,11 +1748,12 @@ static void update_enemies(void)
 		/* next movement */
 		if (e->mtime == 0) {
 			if (e->state < ENEMY_DYING)
+				/* TODO improve */
 				if (e->slowdown) {
 					e->slowdown--;
-					e->mtime = enemy_mtime[e->id] * 8;
+					e->mtime = pgm_read_byte(&enemy_mtime[e->id]) * 8;
 				} else
-					e->mtime = enemy_mtime[e->id];
+					e->mtime = pgm_read_byte(&enemy_mtime[e->id]);
 			else
 				e->mtime = 0;
 		} else
@@ -1855,12 +1910,32 @@ static void update_scene(void)
 
 	/* TODO scroll in boss time */
 	if (gd.boss_time) {
-		gd.boss_time = 0;
+		struct bumping_img *bi = (struct bumping_img *)&gd;
+		uint8_t ret = 0;
+		ret += img_bump(&bi[0], characters_13x16_img, CHAR_B);
+		ret += img_bump(&bi[1], characters_13x16_img, CHAR_O);
+		ret += img_bump(&bi[2], characters_13x16_img, CHAR_S);
+		ret += img_bump(&bi[3], characters_13x16_img, CHAR_S);
+		ret += img_bump(&bi[4], characters_13x16_img, CHAR_T);
+		ret += img_bump(&bi[5], characters_13x16_img, CHAR_I);
+		ret += img_bump(&bi[6], characters_13x16_img, CHAR_M);
+		ret += img_bump(&bi[7], characters_13x16_img, CHAR_E);
+		if (ret == 8)
+			gd.boss_time--;
 	}
 
 	/* TODO scroll in new stage */
 	if (gd.stage_time) {
-		gd.stage_time = 0;
+		struct bumping_img *bi = (struct bumping_img *)&gd;
+		uint8_t ret = 0;
+		ret += img_bump(&bi[0], characters_13x16_img, CHAR_S);
+		ret += img_bump(&bi[1], characters_13x16_img, CHAR_T);
+		ret += img_bump(&bi[2], characters_13x16_img, CHAR_A);
+		ret += img_bump(&bi[3], characters_13x16_img, CHAR_G);
+		ret += img_bump(&bi[4], characters_13x16_img, CHAR_E);
+		ret += img_bump(&bi[5], characters_13x16_img, CHAR_1 + gd.stage_nr);
+		if (ret == 6)
+			gd.stage_time--;
 	}
 }
 
@@ -1951,7 +2026,7 @@ static void draw_enemies(void)
 					 enemy_sprites[e->id],
 					 enemy_masks[e->id],
 					 e->frame + e->sprite_offset,
-					 enemy_sprite_flags[e->state]);
+					 pgm_read_byte(&enemy_sprite_flags[e->state]));
 		}
 	} while (++i < MAX_ENEMIES);
 }
@@ -2109,7 +2184,7 @@ run(void)
 	uint8_t throws = 0;
 	int8_t dx = 0;
 	uint8_t rstate = PROGRAM_RUN_GAME;
-	struct bumping_img *bi = (struct bumping_img *)&flying_numbers[0];
+	struct bumping_img *bi = (struct bumping_img *)&gd; //flying_numbers[0];
 
 	switch (gd.game_state) {
 	case GAME_STATE_INIT:
@@ -2135,18 +2210,12 @@ run(void)
 		if (check_game_over()) {
 			init_timers();
 			gd.game_state = GAME_STATE_OVER;
-			init_bump(&bi[0], 5, 0, 128);
-			init_bump(&bi[1], 5 + 14, -20, 100);
-			init_bump(&bi[2], 5 + 2 * 14, -10, 64);
-			init_bump(&bi[3], 5 + 3 * 14, -5, 80);
-			init_bump(&bi[4], 10 + 4 * 14, -7, 70);
-			init_bump(&bi[5], 10 + 5 * 14, -30, 110);
-			init_bump(&bi[6], 10 + 6 * 14, -15, 90);
-			init_bump(&bi[7], 10 + 7 * 14, -12, 120);
+			init_8_char_img_bump();
 			break;
 		}
 
 		if (check_win_game()) {
+			init_timers();
 			gd.game_state = GAME_STATE_WON;
 			break;
 		}
@@ -2208,14 +2277,14 @@ run(void)
 	case GAME_STATE_OVER:
 	{
 		uint8_t ret = 0;
-		ret += img_bump(&bi[0], characters_13x16_img, 0);
-		ret += img_bump(&bi[1], characters_13x16_img, 1);
-		ret += img_bump(&bi[2], characters_13x16_img, 2);
-		ret += img_bump(&bi[3], characters_13x16_img, 3);
-		ret += img_bump(&bi[4], characters_13x16_img, 4);
-		ret += img_bump(&bi[5], characters_13x16_img, 5);
-		ret += img_bump(&bi[6], characters_13x16_img, 3);
-		ret += img_bump(&bi[7], characters_13x16_img, 6);
+		ret += img_bump(&bi[0], characters_13x16_img, CHAR_G);
+		ret += img_bump(&bi[1], characters_13x16_img, CHAR_A);
+		ret += img_bump(&bi[2], characters_13x16_img, CHAR_M);
+		ret += img_bump(&bi[3], characters_13x16_img, CHAR_E);
+		ret += img_bump(&bi[4], characters_13x16_img, CHAR_O);
+		ret += img_bump(&bi[5], characters_13x16_img, CHAR_V);
+		ret += img_bump(&bi[6], characters_13x16_img, CHAR_E);
+		ret += img_bump(&bi[7], characters_13x16_img, CHAR_R);
 		if (ret == 8)
 			if (a())
 				gd.game_state = GAME_STATE_CLEANUP;
@@ -2224,7 +2293,7 @@ run(void)
 	case GAME_STATE_CLEANUP:
 		init_timers();
 		rstate = PROGRAM_MAIN_MENU;
-		gd.game_state = GAME_STATE_INIT;
+		memset(&gd, 0, sizeof(gd));
 		delay(500);
 		break;
 	}

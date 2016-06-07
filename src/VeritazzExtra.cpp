@@ -10,6 +10,12 @@ void VeritazzExtra::begin()
 {
 #ifndef HOST_TEST
 	boot();
+
+	if (pressed(UP_BUTTON)) {
+		do {
+			idle();
+		} while (!pressed(DOWN_BUTTON));
+	}
 #endif
 
 	bootLogo();

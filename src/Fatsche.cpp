@@ -478,7 +478,8 @@ struct bumping_img {
 	int16_t y;
 	int16_t velocity;
 	int16_t gravity;
-	uint8_t i;
+	uint8_t i:7;
+	uint8_t update:1;
 };
 
 static int16_t ye;
@@ -500,6 +501,7 @@ static void init_bump(struct bumping_img *bi, uint8_t x, int8_t y, int16_t gravi
 	bi->velocity = pgm_read_word(&velocities[0]);
 	bi->gravity = gravity;
 	bi->i = 0;
+	bi->update = 1;
 }
 
 static void init_img_bump(int8_t y)
@@ -509,18 +511,24 @@ static void init_img_bump(int8_t y)
 
 static uint8_t img_bump(struct bumping_img *bi, const uint8_t *img, uint8_t frame)
 {
+	int16_t yn;
 	int16_t velocity = pgm_read_word(&velocities[bi->i]);
 
 	/* TODO only draw if y changed */
-	blit_image_frame(bi->x,
-			 (int8_t)(bi->y >> 8),
-			 img,
-			 img,
-			 frame,
-			 __flag_white);
+	if (bi->update) {
+		blit_image_frame(bi->x,
+				 (int8_t)(bi->y >> 8),
+				 img,
+				 img,
+				 frame,
+				 __flag_white);
+		bi->update = 0;
+	}
 
-	if (bi->i == 7)
+	if (bi->i == 7) {
+		bi->update = 1;
 		return 1;
+	}
 
 	if (bi->y == ye && ((int8_t)(velocity >> 8)) > 0) {
 		bi->i++;
@@ -530,9 +538,13 @@ static uint8_t img_bump(struct bumping_img *bi, const uint8_t *img, uint8_t fram
 		bi->velocity = velocity;
 	}
 
-	bi->y += bi->velocity;
-	if (bi->y > ye)
+	yn = bi->y + bi->velocity;
+	if (((yn >> 8) != (bi->y >> 8)) || ((yn >> 8) != (ye >> 8)))
+		bi->update = 1;
+	if (yn > ye)
 		bi->y = ye;
+	else
+		bi->y = yn;
 	bi->velocity += bi->gravity;
 
 	return 0;
@@ -565,27 +577,43 @@ static void init_stage_text(void)
 /*---------------------------------------------------------------------------
  * text printing functions
  *---------------------------------------------------------------------------*/
-static void print_char(const char c)
-{
-}
-
 static void print_text(const char *t, uint8_t x, uint8_t y)
 {
-	uint8_t cx, cy;
+	uint8_t cx, cy, nshow;
 	char c;
 
 	cx = x;
 	cy = y;
-#if 0
-	do {
-		c = pgm_read_byte(t);
-		blit_image(cx,
-			   cy,
-			   characters_3x4_img,
-			   NULL,
-			   __flag_white);
-	} while (*++t != 
-#endif
+
+	for (;;) {
+		nshow = 0;
+		c = pgm_read_byte(t++);
+		if (!c)
+			break;
+		switch (c) {
+		case ' ':
+			nshow = 1;
+			break;
+		default:
+			if (c <= 57)
+				c -= 48;
+			else if (c <= 122)
+				c -= 97;
+			break;
+		}
+		if (!nshow)
+			blit_image_frame(cx,
+					 cy,
+					 characters_3x4_img,
+					 NULL,
+					 c,
+					 __flag_white);
+		cx += 4;
+		if (cx >= WIDTH - 4) {
+			cx = x;
+			cy += 5;
+		}
+	}
 }
 /*---------------------------------------------------------------------------
  * flying numbers
@@ -1355,12 +1383,12 @@ static const int8_t enemy_atime[ENEMY_MAX] PROGMEM = {
 };
 
 static const int16_t enemy_score[ENEMY_MAX] PROGMEM = {
-	10,
-	10,
-	10,
-	200,
-	200,
-	-100,
+	100,
+	150,
+	50,
+	4000,
+	8000,
+	-200,
 	-500,
 };
 
@@ -1748,12 +1776,11 @@ static void update_enemies(void)
 		/* next movement */
 		if (e->mtime == 0) {
 			if (e->state < ENEMY_DYING)
-				/* TODO improve */
+				e->mtime = pgm_read_byte(&enemy_mtime[e->id]);
 				if (e->slowdown) {
 					e->slowdown--;
-					e->mtime = pgm_read_byte(&enemy_mtime[e->id]) * 8;
-				} else
-					e->mtime = pgm_read_byte(&enemy_mtime[e->id]);
+					e->mtime *= 8;
+				}
 			else
 				e->mtime = 0;
 		} else
@@ -1904,11 +1931,9 @@ static void update_scene(void)
 	/* TODO add another lamp frame above the door */
 
 	/* update lamp animation */
-	/* TODO maybe just draw the blinky line */
 	if (timer_500ms_ticks & 1)
 		lamp_frame = random8(2);
 
-	/* TODO scroll in boss time */
 	if (gd.boss_time) {
 		struct bumping_img *bi = (struct bumping_img *)&gd;
 		uint8_t ret = 0;
@@ -1924,7 +1949,6 @@ static void update_scene(void)
 			gd.boss_time--;
 	}
 
-	/* TODO scroll in new stage */
 	if (gd.stage_time) {
 		struct bumping_img *bi = (struct bumping_img *)&gd;
 		uint8_t ret = 0;
@@ -2091,12 +2115,13 @@ static void draw_scene(void)
 	/* TODO */
 
 	/* draw lamp animation */
-	blit_image_frame(56,
-			 HEIGHT - img_height(scene_lamp_img),
-			 scene_lamp_img,
-			 NULL,
-			 lamp_frame,
-			 __flag_white);
+	blit_image(56,
+		   HEIGHT - img_height(scene_lamp_img),
+		   scene_lamp_img,
+		   NULL,
+		   __flag_white);
+	if (lamp_frame)
+		draw_hline(59, HEIGHT - img_height(scene_lamp_img) + 1, 3);
 }
 
 static const uint8_t *bullet_effect[NR_WEAPONS] = {
@@ -2177,6 +2202,10 @@ static void draw_screen(void)
 	/* draw scene */
 	draw_scene();
 }
+
+static const char score_str[] PROGMEM = "score";
+static const char won_str[] PROGMEM = "you won";
+static const char won_story_str[] PROGMEM = "the neighborhood is safe";
 
 static uint8_t
 run(void)
@@ -2268,7 +2297,10 @@ run(void)
 	case GAME_STATE_WON: {
 		/* print score */
 		struct player *p = &gd.player;
-		draw_number(10, 30, p->score, 1000000, 1);
+		print_text(won_str, 40, 10);
+		print_text(score_str, 15, 20);
+		draw_number(40, 20, p->score, 1000000, 1);
+		print_text(won_story_str, 10, 30);
 		delay(500);
 		if (a())
 			gd.game_state = GAME_STATE_CLEANUP;

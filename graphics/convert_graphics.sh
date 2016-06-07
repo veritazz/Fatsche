@@ -19,6 +19,7 @@ assets="mainscreen game_background enemy_little_girl water_bomb_air
 	text_boss_time
 	help_screen
 	characters_13x16
+	bomb_explode
 "
 
 # assets that have a mask layer
@@ -31,6 +32,7 @@ assets_w_mask="water_bomb_air
 	       powerups
 	       enemy_dummy2
 	       enemy_boss_dummy1
+	       bomb_explode
 "
 
 # batch process all aseprite files to png/json files

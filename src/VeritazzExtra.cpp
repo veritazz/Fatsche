@@ -269,7 +269,7 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
 		if (bRow >= 0) {
 			for (int iCol = sCol; iCol < eCol; iCol++) {
 				if (iCol + x > (WIDTH - 1)) break;
-				if (flags & __flag_v_mirror)
+				if (flags & __flag_h_mirror)
 					bCol = w - iCol - 1;
 				else
 					bCol = iCol;
@@ -282,7 +282,7 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
 		if (yOffset && bRow < (HEIGHT / 8) - 1 && bRow > -2) {
 			for (int iCol = sCol; iCol < eCol; iCol++) {
 				if (iCol + x > (WIDTH - 1)) break;
-				if (flags & __flag_v_mirror)
+				if (flags & __flag_h_mirror)
 					bCol = w - iCol - 1;
 				else
 					bCol = iCol;
@@ -311,6 +311,8 @@ void VeritazzExtra::drawImageFrame(int16_t x, int16_t y, const uint8_t *img,
 
 	if (mask) {
 		uint16_t moffset;
+		if (flags & __flag_mask_single)
+			nr = 0;
 		moffset = img_offset(mask, nr);
 		if (moffset & 0x8000)
 			mflags |= __flag_unpack;

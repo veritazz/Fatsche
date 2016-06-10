@@ -12,14 +12,13 @@ assets="mainscreen game_background enemy_little_girl water_bomb_air
 	scene_lamp numbers_3x5 weapons powerups menu_drops characters_3x4
 	poison_damage
 	enemy_drunken_punk
-	enemy_dummy2
+	enemy_hacker
 	enemy_boss_dummy1
 	arduboy_logo
-	text_game_over
-	text_boss_time
 	help_screen
 	characters_13x16
 	bomb_explode
+	bomb_explode_mask
 	icon_a
 "
 
@@ -27,13 +26,12 @@ assets="mainscreen game_background enemy_little_girl water_bomb_air
 assets_w_mask="water_bomb_air
 	       enemy_raider
 	       enemy_drunken_punk
+	       enemy_hacker
 	       enemy_little_girl
 	       enemy_grandma
 	       enemy_boss
 	       powerups
-	       enemy_dummy2
 	       enemy_boss_dummy1
-	       bomb_explode
 "
 
 # batch process all aseprite files to png/json files

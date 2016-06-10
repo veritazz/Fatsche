@@ -366,8 +366,7 @@ struct enemy {
 	uint8_t y;
 	uint8_t type:3;
 	uint8_t id:5;
-	uint8_t pee:1; /* indicates this guy will pee against the building */
-	uint8_t pee_x:7;
+	uint8_t pee_x;
 	uint8_t atime; /* nr of frames it take for the next animation frame */
 	uint8_t rtime; /* nr of frames it takes to rest */
 	uint8_t mtime; /* nr of frames it takes to move */
@@ -387,6 +386,7 @@ struct enemy {
 	uint16_t slowdown;
 	uint8_t width;
 	uint8_t height;
+	uint16_t flags;
 };
 
 struct door {
@@ -787,11 +787,12 @@ mainscreen(void)
 	if (a())
 		game_state = data->n_game_state;
 
-	blit_image(0,
-		   0,
+	blit_image(3,
+		   10,
 		   mainscreen_img,
 		   NULL,
 		   __flag_white);
+	draw_rect(0, 0, WIDTH, HEIGHT);
 
 	i = 0;
 	do {
@@ -1341,17 +1342,6 @@ enum enemy_state {
 	ENEMY_MAX_STATE,
 };
 
-static const uint8_t enemy_sprite_flags[ENEMY_MAX_STATE] PROGMEM = {
-	__flag_white, /* not used, approach door */
-	__flag_white, /* walking left */
-	__flag_white | __flag_v_mirror, /* walking right */
-	__flag_white, /* attacking */
-	__flag_white, /* resting/swearing */
-	__flag_white, /* special */
-	__flag_white, /* not used, dying */
-	__flag_white, /* not used, dead */
-};
-
 static const uint8_t boss_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* not used, approach door */
 	0, /* walking left */
@@ -1369,7 +1359,7 @@ static const uint8_t vicious_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0, /* walking right */
 	 4, /* attacking */
 	 8, /* resting/swearing */
-	 0, /* special */
+	12, /* special */
 	 0, /* not used, dying */
 	 0, /* not used, dead */
 };
@@ -1446,7 +1436,7 @@ static const int16_t enemy_score[ENEMY_MAX] PROGMEM = {
 static const uint8_t *enemy_sprites[ENEMY_MAX] = {
 	enemy_raider_img,
 	enemy_drunken_punk_img,
-	enemy_dummy2_img,
+	enemy_hacker_img,
 	enemy_boss_img,
 	enemy_boss_dummy1_img,
 	enemy_grandma_img,
@@ -1456,7 +1446,7 @@ static const uint8_t *enemy_sprites[ENEMY_MAX] = {
 static const uint8_t *enemy_masks[ENEMY_MAX] = {
 	enemy_raider_mask_img,
 	enemy_drunken_punk_mask_img,
-	enemy_dummy2_mask_img,
+	enemy_hacker_mask_img,
 	enemy_boss_mask_img,
 	enemy_boss_dummy1_mask_img,
 	enemy_grandma_mask_img,
@@ -1469,7 +1459,7 @@ static const uint8_t enemy_default_frame_reloads[] = {
 	4, /* ENEMY_WALKING_RIGHT */
 	4, /* ENEMY_ATTACKING */
 	4, /* ENEMY_RESTING_SWEARING */
-	4, /* ENEMY_SPECIAL */
+	3, /* ENEMY_SPECIAL */
 	4, /* ENEMY_DYING */
 	4, /* ENEMY_DEAD */
 };
@@ -1567,7 +1557,7 @@ static void enemy_set_state(struct enemy *e, uint8_t state, uint8_t push)
 
 static void spawn_new_enemies(void)
 {
-	uint8_t i = 0, height, width;
+	uint8_t i = 0;
 	struct enemy *e;
 
 	/* update and spawn enemies */
@@ -1579,27 +1569,24 @@ static void spawn_new_enemies(void)
 		if (!enemy_generate_random(e))
 			break;
 		e->active = 1;
-		height = img_height(enemy_sprites[e->id]);
-		width = img_width(enemy_sprites[e->id]);
+		e->width = img_width(enemy_sprites[e->id]);
+		e->height = img_height(enemy_sprites[e->id]);
 		e->lane = 1 + random8(2);
-		if (e->lane == 1 && e->type == ENEMY_VICIOUS) {
-			e->pee = random8(1);
-			e->pee_x = WIDTH - width * 2 - random8(64);
-		}
+		if (e->type == ENEMY_VICIOUS)
+			e->pee_x = WIDTH - e->width * 2 - random8(64);
 		/* calculate point where to start hacking */
 		if (e->type == ENEMY_THIEF)
-			e->dx = random8(WIDTH - width);
-		e->y = lane_y[e->lane] - height;
+			e->dx = random8(WIDTH - e->width);
+		e->y = lane_y[e->lane] - e->height;
 		e->x = WIDTH;
 		e->mtime = pgm_read_byte(&enemy_mtime[e->id]);
 		e->rtime = pgm_read_byte(&enemy_rtime[e->id]);
 		e->atime = pgm_read_byte(&enemy_atime[e->id]);
 		e->life = enemy_life[e->id];
 		e->damage = enemy_damage[e->id];
-		e->width = img_width(enemy_sprites[e->id]);
-		e->height = img_height(enemy_sprites[e->id]);
 		enemy_set_state(e, ENEMY_WALKING_LEFT, 0);
 		enemy_set_state(e, ENEMY_WALKING_LEFT, 1);
+		e->flags = __flag_white;
 		break;
 	} while (++i < MAX_ENEMIES);
 
@@ -1639,7 +1626,10 @@ static void enemy_prepare_direction_change(struct enemy *e) //, uint8_t width)
 
 static uint8_t enemy_pee_pee_done(struct enemy *e)
 {
-	return 1;
+	if (e->rtime == 0)
+		return 1;
+	e->rtime--;
+	return 0;
 }
 
 static void update_enemies(void)
@@ -1715,6 +1705,7 @@ static void update_enemies(void)
 
 		switch (e->state) {
 		case ENEMY_WALKING_LEFT:
+			e->flags &= ~__flag_h_mirror;
 			if (e->mtime)
 				break;
 
@@ -1723,6 +1714,10 @@ static void update_enemies(void)
 			case ENEMY_VICIOUS:
 				if (e->x == (6 + lane_y[e->lane] - lane_y[DOOR_LANE]))
 					enemy_set_state(e, ENEMY_APPROACH_DOOR, 1);
+				if (e->type == ENEMY_VICIOUS && e->pee_x == e->x) {
+					e->rtime = FPS * 3;
+					enemy_set_state(e, ENEMY_SPECIAL, 1);
+				}
 				break;
 			case ENEMY_THIEF:
 				if (e->x == e->dx)
@@ -1763,10 +1758,15 @@ static void update_enemies(void)
 
 			break;
 		case ENEMY_WALKING_RIGHT:
+			e->flags |= __flag_h_mirror;
 			if (e->mtime)
 				break;
 
 			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - e->height)) {
+				if (e->pee_x == e->x) {
+					e->rtime = FPS * 3;
+					enemy_set_state(e, ENEMY_SPECIAL, 1);
+				}
 				if (e->x >= e->dx)
 					enemy_set_state(e, enemy_pop_state(e), 0);
 				else
@@ -2094,6 +2094,7 @@ static void draw_player(void)
 static void draw_enemies(void)
 {
 	uint8_t i = 0;
+	uint16_t flags;
 	struct enemy *e;
 
 	do {
@@ -2101,12 +2102,13 @@ static void draw_enemies(void)
 		if (!e->active)
 			continue;
 		if (!(e->hit & 1)) {
+			flags = __flag_white;
 			blit_image_frame(e->x,
 					 e->y,
 					 enemy_sprites[e->id],
 					 enemy_masks[e->id],
 					 e->frame + e->sprite_offset,
-					 pgm_read_byte(&enemy_sprite_flags[e->state]));
+					 e->flags);
 		}
 	} while (++i < MAX_ENEMIES);
 }
@@ -2191,8 +2193,7 @@ static const uint8_t *bullet_effect_mask[NR_WEAPONS] = {
 	NULL,
 	NULL,
 	NULL,
-	NULL,
-//	bomb_explode_mask_img,
+	bomb_explode_mask_img,
 };
 
 static void draw_bullets(void)
@@ -2212,7 +2213,7 @@ static void draw_bullets(void)
 					 bullet_effect[bs->weapon],
 					 bullet_effect_mask[bs->weapon],
 					 bs->frame,
-					 __flag_white);
+					 __flag_white | __flag_mask_single);
 			break;
 		case BULLET_SPLASH:
 			blit_image_frame(bs->x,
@@ -2249,7 +2250,7 @@ static void draw_score(void)
 static void draw_screen(void)
 {
 	/* draw main scene */
-	blit_image(0, 0, game_background_img, NULL, __flag_white);
+	blit_image(0, 13, game_background_img, NULL, __flag_white);
 	/* draw player */
 	draw_player();
 	/* draw powerups */

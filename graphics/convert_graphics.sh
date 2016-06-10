@@ -20,6 +20,7 @@ assets="mainscreen game_background enemy_little_girl water_bomb_air
 	help_screen
 	characters_13x16
 	bomb_explode
+	icon_a
 "
 
 # assets that have a mask layer

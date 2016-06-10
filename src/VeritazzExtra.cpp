@@ -88,7 +88,7 @@ void VeritazzExtra::drawBitmap(int16_t x, int16_t y, const uint8_t *img, uint8_t
 }
 
 void VeritazzExtra::drawImage(int16_t x, int16_t y, const uint8_t *img,
-                              const uint8_t *mask, uint8_t flags)
+                              const uint8_t *mask, uint16_t flags)
 {
 	drawImageFrame(x, y, img, mask, 0, flags);
 }
@@ -229,7 +229,7 @@ void VeritazzExtra::unpackBytes(uint8_t *buf, uint16_t len)
 }
 
 void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
-                                    uint8_t w, uint8_t h, uint8_t flags)
+                                    uint8_t w, uint8_t h, uint16_t flags)
 {
 	// no need to dar at all of we're offscreen
 	if (x + w < 0 || x > WIDTH - 1 || y + h < 0 || y > HEIGHT - 1)
@@ -296,11 +296,11 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
 
 void VeritazzExtra::drawImageFrame(int16_t x, int16_t y, const uint8_t *img,
                                    const uint8_t *mask, uint8_t nr,
-                                   uint8_t flags)
+                                   uint16_t flags)
 {
 	uint16_t ioffset;
 	uint8_t w, h;
-	uint8_t iflags = flags, mflags = flags;
+	uint16_t iflags = flags, mflags = flags;
 
 	w = img_width(img);
 	h = img_height(img);

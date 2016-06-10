@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include "images.h"
 #include "VeritazzExtra.h"
 
@@ -28,6 +29,7 @@ SimpleButtons buttons(arduboy);
 #define MAX_AMMO_W4                 1
 #define NR_BULLETS                  \
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
+#define MS_TO_FRAMES(m)             (((m) * FPS) / 1000)
 #define WEAPON1_COOLDOWN            (FPS / 3)
 #define WEAPON2_COOLDOWN            (FPS / 3)
 #define WEAPON3_COOLDOWN            (FPS * 5)
@@ -108,7 +110,7 @@ enum timers {
 	TIMER_ENEMY_SPAWN,
 	TIMER_POWERUP_SPAWN,
 	TIMER_POWERUP_SPAWN2,
-	TIMER_500MS,
+	TIMER_GP,
 	TIMER_MAX,
 };
 
@@ -161,11 +163,11 @@ static void stop_timer(uint8_t id)
 /*---------------------------------------------------------------------------
  * general purpose timers
  *---------------------------------------------------------------------------*/
-static uint8_t timer_500ms_ticks = 0;
-static void timer_500ms_counter(void)
+static uint8_t gp_timer_ticks = 0;
+static void gp_timer_count_fn(void)
 {
-	timer_500ms_ticks++;
-	start_timer(TIMER_500MS, FPS / 2);
+	gp_timer_ticks++;
+	start_timer(TIMER_GP, FPS / 2);
 }
 
 /*---------------------------------------------------------------------------
@@ -312,6 +314,13 @@ static void finish_frame(void)
 /*---------------------------------------------------------------------------
  * data types
  *---------------------------------------------------------------------------*/
+struct rect {
+	int16_t x;
+	int16_t y;
+	int16_t xe;
+	int16_t ye;
+};
+
 struct menu_drop {
 	uint8_t idx;
 	uint16_t stime; /* show time of next drop */
@@ -376,6 +385,8 @@ struct enemy {
 	uint8_t sprite_offset;
 	uint8_t hit;
 	uint16_t slowdown;
+	uint8_t width;
+	uint8_t height;
 };
 
 struct door {
@@ -400,6 +411,7 @@ struct weapon_states {
 	uint8_t selected:3; /* selected weapon */
 	uint8_t previous:3; /* previous selected weapon */
 	uint8_t direction:1;
+	uint8_t effects_active;
 	uint8_t stime;
 	int8_t icon_x;
 	uint8_t ammo[NR_WEAPONS]; /* available ammo per weapon */
@@ -411,8 +423,7 @@ struct weapon_states {
 struct power_up {
 	uint8_t active;
 	uint8_t type;
-	uint8_t x;
-	uint8_t y;
+	struct rect r;
 	uint8_t lane;
 	uint8_t frame;
 	uint8_t atime;
@@ -438,13 +449,6 @@ struct game_data {
 	struct weapon_states ws;
 	struct power_up power_ups[MAX_POWERUPS];
 	enum game_states game_state;
-};
-
-struct rect {
-	uint8_t x;
-	uint8_t y;
-	uint8_t w;
-	uint8_t h;
 };
 
 struct flying_number {
@@ -577,41 +581,77 @@ static void init_stage_text(void)
 /*---------------------------------------------------------------------------
  * text printing functions
  *---------------------------------------------------------------------------*/
-static void print_text(const char *t, uint8_t x, uint8_t y)
+#define __text_centered                (1 << 0)
+
+static uint8_t line_length(const char *t)
 {
-	uint8_t cx, cy, nshow;
 	char c;
+	uint8_t len = 0;
+
+	for (;;) {
+		c = pgm_read_byte(t++);
+		if (!c || c == '\n')
+			break;
+		len++;
+	}
+	return len;
+}
+
+static void print_text(const char *t, uint8_t x, uint8_t y, uint8_t options)
+{
+	uint8_t cx, cy, flags, len = 0;
+	char c;
+
+	if (options & __text_centered) {
+		len = line_length(t);
+		x = (WIDTH - len * 4) / 2;
+	}
 
 	cx = x;
 	cy = y;
 
 	for (;;) {
-		nshow = 0;
+		flags = 0;
+
+		if (len == 0)
+			break;
+
 		c = pgm_read_byte(t++);
 		if (!c)
 			break;
 		switch (c) {
 		case ' ':
-			nshow = 1;
+			flags |= 1;
+			break;
+		case '\n':
+			if (options & __text_centered) {
+				len = line_length(t);
+				x = (WIDTH - len * 4) / 2;
+			}
+			cy += 5;
+			cx = x;
+			flags |= 3;
 			break;
 		default:
 			if (c <= 57)
 				c -= 48;
 			else if (c <= 122)
-				c -= 97;
+				c -= 87;
 			break;
 		}
-		if (!nshow)
+		if ((flags & 1) == 0)
 			blit_image_frame(cx,
 					 cy,
 					 characters_3x4_img,
 					 NULL,
 					 c,
 					 __flag_white);
-		cx += 4;
-		if (cx >= WIDTH - 4) {
-			cx = x;
-			cy += 5;
+		if ((flags & 2) == 0) {
+			cx += 4;
+			if (cx >= WIDTH - 4) {
+				cx = x;
+				cy += 5;
+			}
 		}
 	}
 }
@@ -663,7 +703,7 @@ static void draw_flying_numbers(void)
 			draw_number(flying_numbers[n].x,
 				    flying_numbers[n].y,
 				    flying_numbers[n].number,
-				    100, 2);
+				    10000, 2);
 	} while (++n < MAX_FLYING_NUMBERS);
 }
 /*---------------------------------------------------------------------------
@@ -832,12 +872,33 @@ load(void)
 static uint8_t
 help(void)
 {
-	blit_image(0, 0, help_screen_img, NULL, __flag_white);
-	if (pressedA()) {
+	uint8_t rstate = PROGRAM_SHOW_HELP;
+
+	switch (gd.game_state) {
+	case GAME_STATE_INIT:
+		init_timers();
+		/* setup general purpose timer to 1s */
+		gp_timer_ticks = 0;
+		setup_timer(TIMER_GP, gp_timer_count_fn);
+		start_timer(TIMER_GP, FPS);
 		delay(500);
-		return PROGRAM_MAIN_MENU;
+		gd.game_state = GAME_STATE_RUN_GAME;
+		break;
+	case GAME_STATE_RUN_GAME:
+		blit_image(0, 0, help_screen_img, NULL, __flag_white);
+		if (gp_timer_ticks & 1)
+			blit_image(118, 55, icon_a_img, NULL, __flag_white);
+		if (pressedA())
+			gd.game_state = GAME_STATE_CLEANUP;
+		break;
+	case GAME_STATE_CLEANUP:
+		init_timers();
+		memset(&gd, 0, sizeof(gd));
+		rstate = PROGRAM_MAIN_MENU;
+		delay(500);
+		break;
 	}
-	return PROGRAM_SHOW_HELP;
+	return rstate;
 }
 
 /*---------------------------------------------------------------------------
@@ -943,9 +1004,9 @@ static void init_player(void)
  *---------------------------------------------------------------------------*/
 enum bullet_state {
 	BULLET_INACTIVE,
+	BULLET_SPLASH,
 	BULLET_ACTIVE,
 	BULLET_EFFECT,
-	BULLET_SPLASH,
 };
 
 enum weapon_type {
@@ -960,8 +1021,8 @@ static const uint8_t bullet_damage_table[NR_WEAPONS] = {1, 4, 1, 16};
 
 /* nr of frames weapon is effective on ground */
 static const uint16_t etime[NR_WEAPONS] = {
-	FPS / 2, /* water */
-	FPS / 2, /* poo */
+	MS_TO_FRAMES(500), /* water */
+	MS_TO_FRAMES(500), /* poo */
 	FPS * 3, /* oil */
 	FPS * 2, /* molotov */
 };
@@ -984,20 +1045,7 @@ static const uint16_t weapon_cool_down[NR_WEAPONS] = {
 
 static uint8_t do_damage_from_table(struct bullet *b, struct rect *r)
 {
-	uint8_t hit = 0;
-
-	if (b->state != BULLET_ACTIVE)
-		return 0;
-
-	/* check if it is a hit */
-	if (b->x >= r->x && b->x <= (r->x + r->w) && b->ys >= r->y && b->ys <= (r->y + r->h)) {
-		hit = 1;
-	}
-	if ((b->x + 4) >= r->x && (b->x + 4) <= (r->x + r->w) && (b->ys + 4) >= r->y && (b->ys + 4) <= (r->y + r->h)) {
-		hit = 1;
-	}
-
-	if (!hit)
+	if (!(b->x < r->xe && (b->x + 4) > r->x && b->ys < r->ye && (b->ys + 4) > r->y))
 		return 0;
 
 	if (b->state == BULLET_ACTIVE)
@@ -1039,6 +1087,7 @@ static const damage_fn_t bullet_damage[NR_WEAPONS] = {
 #define LOWER_LANE			2
 
 static const uint8_t lane_y[3] = {52, 56, 62};
+static const uint8_t lane_xlate[3] = {UPPER_LANE, UPPER_LANE, LOWER_LANE};
 
 static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 {
@@ -1107,8 +1156,10 @@ static void update_bullets(void)
 			continue;
 
 		height = img_height(water_bomb_air_img);
-		if (bs->state >= BULLET_EFFECT) {
+		if (bs->state == BULLET_EFFECT || bs->state == BULLET_SPLASH) {
 			if (bs->etime == 0) {
+				if (bs->state == BULLET_EFFECT)
+					gd.ws.effects_active--;
 				bs->state = BULLET_INACTIVE;
 				gd.ws.ammo[bs->weapon]++;
 			} else
@@ -1118,6 +1169,7 @@ static void update_bullets(void)
 			if (bs->ys == lane_y[bs->lane] - height) {
 				bs->frame = 0;
 				bs->state = BULLET_EFFECT;
+				gd.ws.effects_active++;
 			}
 			bs->ys++;
 		}
@@ -1130,18 +1182,18 @@ static void update_bullets(void)
 	} while (++b < NR_BULLETS);
 }
 
-static uint8_t get_bullet_damage(uint8_t lane, uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+static uint8_t get_bullet_damage(uint8_t lane, struct rect *r)
 {
 	uint8_t b = 0, damage = 0;
 	struct bullet *bs;
-	struct rect r = {x, y, w, h};
 
 	do {
 		bs = &gd.ws.bs[b];
-		if (bs->lane != lane)
-			if (bs->lane != UPPER_LANE || lane != DOOR_LANE)
-				continue;
-		damage += bullet_damage[bs->weapon](bs, &r);
+		if (bs->state < BULLET_ACTIVE)
+			continue;
+		if (bs->lane != lane_xlate[lane])
+			continue;
+		damage += bullet_damage[bs->weapon](bs, r);
 	} while (++b < NR_BULLETS);
 
 	return damage;
@@ -1155,12 +1207,11 @@ static void get_bullet_effect(uint8_t lane, struct enemy *e)
 
 	do {
 		bs = &gd.ws.bs[b];
-		if (bs->lane != lane)
-			if (bs->lane != UPPER_LANE || lane != DOOR_LANE)
-				continue;
 		if (bs->weapon != WEAPON_OIL)
 			continue;
 		if (bs->state != BULLET_EFFECT)
+			continue;
+		if (bs->lane != lane_xlate[lane])
 			continue;
 
 		x1 = bs->x - 30;
@@ -1214,10 +1265,10 @@ static void init_weapons(void)
  * stage handling
  *---------------------------------------------------------------------------*/
 static const struct stage game_stages[MAX_STAGES] PROGMEM = {
-	{ 10, 3, 2, 0},
-	{ 10, 3, 3, 1},
-	{ 10, 5, 3, 2},
-	{ 10, 5, 4, 2},
+	{ 1, 3, 2, 0},
+	{ 1, 3, 3, 1},
+	{ 1, 5, 3, 2},
+	{ 1, 5, 4, 2},
 };
 
 static void init_stage(void)
@@ -1353,13 +1404,13 @@ static const int8_t enemy_life[ENEMY_MAX] = {
 };
 
 static const int8_t enemy_mtime[ENEMY_MAX] PROGMEM = {
-	FPS / 20,
-	FPS / 20,
-	FPS / 20,
-	FPS / 10,
-	FPS / 10,
-	FPS / 5,
-	FPS / 3,
+	MS_TO_FRAMES(100),
+	MS_TO_FRAMES(150),
+	MS_TO_FRAMES(170),
+	MS_TO_FRAMES(200),
+	MS_TO_FRAMES(250),
+	MS_TO_FRAMES(250),
+	MS_TO_FRAMES(350),
 };
 
 static const int8_t enemy_rtime[ENEMY_MAX] PROGMEM = {
@@ -1373,13 +1424,13 @@ static const int8_t enemy_rtime[ENEMY_MAX] PROGMEM = {
 };
 
 static const int8_t enemy_atime[ENEMY_MAX] PROGMEM = {
-	FPS / 5,
-	FPS / 5,
-	FPS / 5,
-	FPS / 5,
-	FPS / 5,
-	FPS / 5,
-	FPS / 5,
+	MS_TO_FRAMES(150),
+	MS_TO_FRAMES(150),
+	MS_TO_FRAMES(150),
+	MS_TO_FRAMES(200),
+	MS_TO_FRAMES(200),
+	MS_TO_FRAMES(180),
+	MS_TO_FRAMES(180),
 };
 
 static const int16_t enemy_score[ENEMY_MAX] PROGMEM = {
@@ -1545,6 +1596,8 @@ static void spawn_new_enemies(void)
 		e->atime = pgm_read_byte(&enemy_atime[e->id]);
 		e->life = enemy_life[e->id];
 		e->damage = enemy_damage[e->id];
+		e->width = img_width(enemy_sprites[e->id]);
+		e->height = img_height(enemy_sprites[e->id]);
 		enemy_set_state(e, ENEMY_WALKING_LEFT, 0);
 		enemy_set_state(e, ENEMY_WALKING_LEFT, 1);
 		break;
@@ -1576,11 +1629,11 @@ static uint8_t enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 	return 0;
 }
 
-static void enemy_prepare_direction_change(struct enemy *e, uint8_t width)
+static void enemy_prepare_direction_change(struct enemy *e) //, uint8_t width)
 {
 	uint8_t min;
 	e->dlane = 1 + random8(2);
-	min = abs(lane_y[e->lane] - lane_y[e->dlane]) + width + 1;
+	min = abs(lane_y[e->lane] - lane_y[e->dlane]) + e->width + 1;
 	e->dx = e->x + min + random8(WIDTH - 2 * min - e->x);
 }
 
@@ -1592,12 +1645,13 @@ static uint8_t enemy_pee_pee_done(struct enemy *e)
 static void update_enemies(void)
 {
 	uint8_t damage;
-	uint8_t i = 0, width, height;
+	uint8_t i = 0; //, width, height;
 	struct enemy *e;
 	struct player *p = &gd.player;
 	struct door *d = &gd.door;
 	struct enemy *a;
 	struct stage *s = &gd.stage;
+	struct rect r; // = {x, y, x + w, y + h};
 
 	/* update and spawn enemies */
 	do {
@@ -1605,12 +1659,14 @@ static void update_enemies(void)
 		if (!e->active)
 			continue;
 
-		width = img_width(enemy_sprites[e->id]);
-		height = img_height(enemy_sprites[e->id]);
 		/* check if hit by bullet */
 		damage = 0;
 		if (e->life > 0) {
-			damage = get_bullet_damage(e->lane, e->x, e->y, width, height);
+			r.x = e->x;
+			r.y = e->y;
+			r.xe = e->x + e->width;
+			r.ye = e->y + e->height;
+			damage = get_bullet_damage(e->lane, &r);
 			if (e->poisoned) {
 				if (e->poison_timeout)
 					e->poison_timeout--;
@@ -1625,9 +1681,9 @@ static void update_enemies(void)
 			/* check if enemy gets poisoned */
 			if (p->poison)
 				e->poisoned = 4;
-			e->life -= damage; /* bullet damage */
+			e->life -= damage; /* do damage */
 			if (e->type != ENEMY_PEACEFUL) {
-				/* blink for 1 secs */
+				/* blink for 1 sec */
 				e->hit = FPS;
 			}
 			if (e->life <= 0) {
@@ -1654,7 +1710,8 @@ static void update_enemies(void)
 			}
 		}
 
-		get_bullet_effect(e->lane, e);
+		if (gd.ws.effects_active)
+			get_bullet_effect(e->lane, e);
 
 		switch (e->state) {
 		case ENEMY_WALKING_LEFT:
@@ -1673,7 +1730,7 @@ static void update_enemies(void)
 				break;
 			default:
 				/* peaceful enemies just pass by */
-				if (e->x == -width)
+				if (e->x == -e->width)
 					e->active = 0;
 				break;
 			}
@@ -1686,12 +1743,12 @@ static void update_enemies(void)
 				if (e->type == ENEMY_BOSS) {
 					/* move away for the boss */
 					enemy_flush_states(a);
-					enemy_prepare_direction_change(a, img_width(enemy_sprites[a->id]));
+					enemy_prepare_direction_change(a);
 					enemy_set_state(a, ENEMY_WALKING_LEFT, 0);
 					enemy_set_state(a, ENEMY_WALKING_RIGHT, 1);
 				} else {
 					/* door is already under attack, take a walk */
-					enemy_prepare_direction_change(e, width);
+					enemy_prepare_direction_change(e);
 					enemy_set_state(e, ENEMY_WALKING_RIGHT, 0);
 					break;
 				}
@@ -1701,7 +1758,7 @@ static void update_enemies(void)
 			e->dlane = DOOR_LANE;
 
 			e->dx = e->x - abs(lane_y[e->lane] - lane_y[e->dlane]);
-			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height))
+			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - e->height))
 				enemy_set_state(e, ENEMY_ATTACKING, 0);
 
 			break;
@@ -1709,7 +1766,7 @@ static void update_enemies(void)
 			if (e->mtime)
 				break;
 
-			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - height)) {
+			if (enemy_switch_lane(e, e->dlane, lane_y[e->dlane] - e->height)) {
 				if (e->x >= e->dx)
 					enemy_set_state(e, enemy_pop_state(e), 0);
 				else
@@ -1775,13 +1832,13 @@ static void update_enemies(void)
 			e->atime--;
 		/* next movement */
 		if (e->mtime == 0) {
-			if (e->state < ENEMY_DYING)
+			if (e->state < ENEMY_DYING) {
 				e->mtime = pgm_read_byte(&enemy_mtime[e->id]);
 				if (e->slowdown) {
 					e->slowdown--;
 					e->mtime *= 8;
 				}
-			else
+			} else
 				e->mtime = 0;
 		} else
 			e->mtime--;
@@ -1831,8 +1888,10 @@ static void spawn_new_powerup(void)
 		p->frame = 0;
 		p->timeout = (random8(4) + 4) * FPS;
 		p->lane = 1 + random8(2);
-		p->x = random8(WIDTH - width);
-		p->y = lane_y[p->lane] - height;
+		p->r.x = random8(WIDTH - width);
+		p->r.y = lane_y[p->lane] - height;
+		p->r.xe = p->r.x + width;
+		p->r.ye = p->r.y + height;
 		/* make life and poison less often */
 		p->type = random8(POWER_UP_MAX);
 		break;
@@ -1841,12 +1900,9 @@ static void spawn_new_powerup(void)
 
 static void update_powerups(void)
 {
-	uint8_t i = 0, width, height;
+	uint8_t i = 0; //, width, height;
 	struct power_up *pu;
 	struct player *p = &gd.player;
-
-	width = img_width(powerups_img);
-	height = img_height(powerups_img);
 
 	do {
 		pu = &gd.power_ups[i];
@@ -1859,13 +1915,13 @@ static void update_powerups(void)
 			continue;
 		}
 		/* check if hit by player */
-		if (get_bullet_damage(pu->lane, pu->x, pu->y, width, height)) {
+		if (get_bullet_damage(pu->lane, &pu->r)) {
 			pu->active = 0;
 			start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
 			switch (pu->type) {
 			case POWER_UP_LIFE:
 				p->life += 32;
-				add_flying_number(pu->x, pu->x, 32);
+				add_flying_number(pu->r.x, pu->r.x, 32);
 				if (p->life > PLAYER_MAX_LIFE)
 					p->life = PLAYER_MAX_LIFE;
 				break;
@@ -1874,7 +1930,7 @@ static void update_powerups(void)
 				break;
 			case POWER_UP_SCORE:
 				p->score += 100;
-				add_flying_number(pu->x, pu->x, 100);
+				add_flying_number(pu->r.x, pu->r.x, 100);
 				break;
 			}
 		}
@@ -1931,7 +1987,7 @@ static void update_scene(void)
 	/* TODO add another lamp frame above the door */
 
 	/* update lamp animation */
-	if (timer_500ms_ticks & 1)
+	if (gp_timer_ticks & 1)
 		lamp_frame = random8(2);
 
 	if (gd.boss_time) {
@@ -2063,8 +2119,8 @@ static void draw_powerups(void)
 	do {
 		p = &gd.power_ups[i];
 		if (p->active)
-			blit_image_frame(p->x,
-					 p->y,
+			blit_image_frame(p->r.x,
+					 p->r.y,
 					 powerups_img,
 					 powerups_mask_img,
 					 p->frame + (p->type * 4),
@@ -2082,7 +2138,7 @@ static void draw_life_bar(uint8_t x, uint8_t y, int16_t current, int16_t max,
 	if (life_level > 2 || !blink) {
 		draw_rect(x, y, 15, 5);
 	} else {
-		if (timer_500ms_ticks & 1)
+		if (gp_timer_ticks & 1)
 			draw_rect(x, y, 15, 5);
 	}
 
@@ -2128,7 +2184,7 @@ static const uint8_t *bullet_effect[NR_WEAPONS] = {
 	bomb_splash_img,
 	bomb_splash_img,
 	bomb_splash_img,
-	bomb_splash_img,
+	bomb_explode_img,
 };
 
 static const uint8_t *bullet_effect_mask[NR_WEAPONS] = {
@@ -2136,19 +2192,23 @@ static const uint8_t *bullet_effect_mask[NR_WEAPONS] = {
 	NULL,
 	NULL,
 	NULL,
+//	bomb_explode_mask_img,
 };
 
 static void draw_bullets(void)
 {
 	uint8_t b = 0;
 	struct bullet *bs;
+	uint8_t width, height;
 
 	do {
 		bs = &gd.ws.bs[b];
 		switch (bs->state) {
 		case BULLET_EFFECT:
-			blit_image_frame(bs->x,
-					 bs->ys,
+			width = img_width(bullet_effect[bs->weapon]);
+			height = img_height(bullet_effect[bs->weapon]);
+			blit_image_frame(bs->x - width / 2,
+					 lane_y[bs->lane] - height,
 					 bullet_effect[bs->weapon],
 					 bullet_effect_mask[bs->weapon],
 					 bs->frame,
@@ -2179,8 +2239,11 @@ static void draw_bullets(void)
 static void draw_score(void)
 {
 	struct player *p = &gd.player;
-
+#if 1
 	draw_number(100, 59, p->score, 1000000, 1);
+#else
+	draw_number(100, 59, arduboy.cpuLoad(), 1000000, 1);
+#endif
 }
 
 static void draw_screen(void)
@@ -2203,9 +2266,12 @@ static void draw_screen(void)
 	draw_scene();
 }
 
-static const char score_str[] PROGMEM = "score";
 static const char won_str[] PROGMEM = "you won";
-static const char won_story_str[] PROGMEM = "the neighborhood is safe";
+static const char won_story_str[] PROGMEM =
+"your neighborhood is safe now\n" \
+"you have beaten all the scum\n" \
+"granny and the little girl\n" \
+"finally come to rest";
 
 static uint8_t
 run(void)
@@ -2213,7 +2279,7 @@ run(void)
 	uint8_t throws = 0;
 	int8_t dx = 0;
 	uint8_t rstate = PROGRAM_RUN_GAME;
-	struct bumping_img *bi = (struct bumping_img *)&gd; //flying_numbers[0];
+	struct bumping_img *bi = (struct bumping_img *)&gd;
 
 	switch (gd.game_state) {
 	case GAME_STATE_INIT:
@@ -2226,10 +2292,10 @@ run(void)
 		init_stage();
 		init_img_bump(25);
 
-		/* setup general purpose 500ms counting timer */
-		timer_500ms_ticks = 0;
-		setup_timer(TIMER_500MS, timer_500ms_counter);
-		start_timer(TIMER_500MS, FPS / 2);
+		/* setup general purpose timer to 500ms */
+		gp_timer_ticks = 0;
+		setup_timer(TIMER_GP, gp_timer_count_fn);
+		start_timer(TIMER_GP, FPS / 2);
 
 		gd.game_state = GAME_STATE_RUN_GAME;
 		delay(500);
@@ -2238,14 +2304,26 @@ run(void)
 		/* check for game over */
 		if (check_game_over()) {
 			init_timers();
+			/* setup general purpose timer to 1s */
+			gp_timer_ticks = 0;
+			setup_timer(TIMER_GP, gp_timer_count_fn);
+			start_timer(TIMER_GP, FPS);
+
 			gd.game_state = GAME_STATE_OVER;
 			init_8_char_img_bump();
+			delay(500);
 			break;
 		}
 
 		if (check_win_game()) {
 			init_timers();
+			/* setup general purpose timer to 1s */
+			gp_timer_ticks = 0;
+			setup_timer(TIMER_GP, gp_timer_count_fn);
+			start_timer(TIMER_GP, FPS);
+
 			gd.game_state = GAME_STATE_WON;
+			delay(500);
 			break;
 		}
 
@@ -2297,12 +2375,12 @@ run(void)
 	case GAME_STATE_WON: {
 		/* print score */
 		struct player *p = &gd.player;
-		print_text(won_str, 40, 10);
-		print_text(score_str, 15, 20);
-		draw_number(40, 20, p->score, 1000000, 1);
-		print_text(won_story_str, 10, 30);
-		delay(500);
-		if (a())
+		print_text(won_str, 0, 10, __text_centered);
+		draw_number(50, 20, p->score, 1000000, 1);
+		print_text(won_story_str, 10, 30, __text_centered);
+		if (gp_timer_ticks & 1)
+			blit_image(118, 55, icon_a_img, NULL, __flag_white);
+		if (pressedA())
 			gd.game_state = GAME_STATE_CLEANUP;
 		break;
 	}
@@ -2317,9 +2395,13 @@ run(void)
 		ret += img_bump(&bi[5], characters_13x16_img, CHAR_V);
 		ret += img_bump(&bi[6], characters_13x16_img, CHAR_E);
 		ret += img_bump(&bi[7], characters_13x16_img, CHAR_R);
-		if (ret == 8)
-			if (a())
+		if (ret == 8) {
+			if (gp_timer_ticks & 1)
+				blit_image(118, 55, icon_a_img, NULL,
+					   __flag_white);
+			if (pressedA())
 				gd.game_state = GAME_STATE_CLEANUP;
+		}
 		break;
 	}
 	case GAME_STATE_CLEANUP:

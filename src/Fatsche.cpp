@@ -1323,7 +1323,6 @@ enum enemies {
 	ENEMY_HACKER,
 	/* bosses */
 	ENEMY_BOSS1,
-	ENEMY_BOSS2,
 	/* peaceful enemies */
 	ENEMY_GRANDMA,
 	ENEMY_LITTLE_GIRL,
@@ -1380,17 +1379,16 @@ static const uint8_t *enemy_sprite_offsets[ENEMY_MAX] = {
 	vicious_enemy_sprite_offsets,
 	vicious_enemy_sprite_offsets,
 	boss_enemy_sprite_offsets,
-	boss_enemy_sprite_offsets,
 	peaceful_enemy_sprite_offsets,
 	peaceful_enemy_sprite_offsets,
 };
 
 static const uint8_t enemy_damage[ENEMY_MAX] = {
-	1, 1, 0, 10, 20, 0, 0,
+	1, 1, 0, 20, 0, 0,
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
-	16, 16, 16, 64, 64, 32, 32,
+	16, 16, 16, 64, 32, 32,
 };
 
 static const int8_t enemy_mtime[ENEMY_MAX] PROGMEM = {
@@ -1399,7 +1397,6 @@ static const int8_t enemy_mtime[ENEMY_MAX] PROGMEM = {
 	MS_TO_FRAMES(170),
 	MS_TO_FRAMES(200),
 	MS_TO_FRAMES(250),
-	MS_TO_FRAMES(250),
 	MS_TO_FRAMES(350),
 };
 
@@ -1407,7 +1404,6 @@ static const int8_t enemy_rtime[ENEMY_MAX] PROGMEM = {
 	FPS * 2,
 	FPS,
 	FPS,
-	FPS * 2,
 	FPS * 2,
 	6,
 	0,
@@ -1418,7 +1414,6 @@ static const int8_t enemy_atime[ENEMY_MAX] PROGMEM = {
 	MS_TO_FRAMES(150),
 	MS_TO_FRAMES(150),
 	MS_TO_FRAMES(200),
-	MS_TO_FRAMES(200),
 	MS_TO_FRAMES(180),
 	MS_TO_FRAMES(180),
 };
@@ -1428,7 +1423,6 @@ static const int16_t enemy_score[ENEMY_MAX] PROGMEM = {
 	150,
 	50,
 	4000,
-	8000,
 	-200,
 	-500,
 };
@@ -1438,7 +1432,6 @@ static const uint8_t *enemy_sprites[ENEMY_MAX] = {
 	enemy_drunken_punk_img,
 	enemy_hacker_img,
 	enemy_boss_img,
-	enemy_boss_dummy1_img,
 	enemy_grandma_img,
 	enemy_little_girl_img,
 };
@@ -1448,7 +1441,6 @@ static const uint8_t *enemy_masks[ENEMY_MAX] = {
 	enemy_drunken_punk_mask_img,
 	enemy_hacker_mask_img,
 	enemy_boss_mask_img,
-	enemy_boss_dummy1_mask_img,
 	enemy_grandma_mask_img,
 	enemy_little_girl_mask_img,
 };
@@ -1476,7 +1468,6 @@ static const uint8_t enemy_little_girl_frame_reloads[] = {
 };
 
 static const uint8_t *enemy_frame_reloads[ENEMY_MAX] = {
-	enemy_default_frame_reloads,
 	enemy_default_frame_reloads,
 	enemy_default_frame_reloads,
 	enemy_default_frame_reloads,

@@ -16,6 +16,7 @@ assets="mainscreen game_background enemy_little_girl water_bomb_air
 	arduboy_logo
 	help_screen
 	characters_13x16
+	bomb_oil
 	bomb_explode
 	bomb_explode_mask
 	icon_a

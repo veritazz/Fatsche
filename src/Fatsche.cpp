@@ -400,8 +400,8 @@ struct bullet {
 	uint8_t ys; /* y start position of the bullet */
 	uint8_t state:2;
 	uint8_t weapon:2;
-	uint8_t frame:2;
 	uint8_t lane:2;
+	uint8_t frame;
 	uint8_t atime; /* nr of frames it take for the next animation frame */
 	uint8_t etime; /* nr of frames a weapon has effect on the ground */
 };
@@ -613,7 +613,7 @@ static void print_text(const char *t, uint8_t x, uint8_t y, uint8_t options)
 	for (;;) {
 		flags = 0;
 
-		if (len == 0)
+		if (len == 0 && options & __text_centered)
 			break;
 
 		c = pgm_read_byte(t++);
@@ -870,6 +870,12 @@ load(void)
 	return PROGRAM_MAIN_MENU;
 }
 
+static const char help_move_str[] PROGMEM = "move player";
+static const char help_select_str[] PROGMEM = "select w";
+static const char help_a_str[] PROGMEM = "uppler lane";
+static const char help_b_str[] PROGMEM = "lower lane";
+static const char help_back_str[] PROGMEM = "menu";
+
 static uint8_t
 help(void)
 {
@@ -887,8 +893,13 @@ help(void)
 		break;
 	case GAME_STATE_RUN_GAME:
 		blit_image(0, 0, help_screen_img, NULL, __flag_white);
+		print_text(help_move_str, 32, 9, 0);
+		print_text(help_select_str, 32, 20, 0);
+		print_text(help_a_str, 32, 31, 0);
+		print_text(help_b_str, 32, 42, 0);
+		print_text(help_back_str, 32, 53, 0);
 		if (gp_timer_ticks & 1)
-			blit_image(118, 55, icon_a_img, NULL, __flag_white);
+			blit_image(64, 55, icon_a_img, NULL, __flag_white);
 		if (pressedA())
 			gd.game_state = GAME_STATE_CLEANUP;
 		break;
@@ -1024,7 +1035,7 @@ static const uint8_t bullet_damage_table[NR_WEAPONS] = {1, 4, 1, 16};
 static const uint16_t etime[NR_WEAPONS] = {
 	MS_TO_FRAMES(500), /* water */
 	MS_TO_FRAMES(500), /* poo */
-	FPS * 3, /* oil */
+	FPS * 5, /* oil */
 	FPS * 2, /* molotov */
 };
 
@@ -1065,8 +1076,8 @@ static uint8_t do_damage_from_explosion(struct bullet *b, struct rect *r)
 	if (b->etime != etime[b->weapon])
 		return 0;
 
-	x1 = b->x - 30;
-	x2 = b->x + 30;
+	x1 = b->x - 15;
+	x2 = b->x + 15;
 
 	if (r->x >= x1 && r->x <= x2)
 		return bullet_damage_table[b->weapon];
@@ -1089,6 +1100,13 @@ static const damage_fn_t bullet_damage[NR_WEAPONS] = {
 
 static const uint8_t lane_y[3] = {52, 56, 62};
 static const uint8_t lane_xlate[3] = {UPPER_LANE, UPPER_LANE, LOWER_LANE};
+
+static const uint8_t weapon_effect_frame_reloads[] = {
+	4,
+	4,
+	2,
+	8,
+};
 
 static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 {
@@ -1178,6 +1196,12 @@ static void update_bullets(void)
 		if (bs->atime == 0) {
 			bs->atime = BULLET_FRAME_TIME;
 			bs->frame++;
+			if (bs->state == BULLET_EFFECT) {
+				if (bs->frame == weapon_effect_frame_reloads[bs->weapon])
+					bs->frame = 0;
+			} else {
+				bs->frame %= 4;
+			}
 		} else
 			bs->atime--;
 	} while (++b < NR_BULLETS);
@@ -1215,8 +1239,8 @@ static void get_bullet_effect(uint8_t lane, struct enemy *e)
 		if (bs->lane != lane_xlate[lane])
 			continue;
 
-		x1 = bs->x - 30;
-		x2 = bs->x + 30;
+		x1 = bs->x - 8;
+		x2 = bs->x + 8;
 
 		if (e->x >= x1 && e->x <= x2 && !e->slowdown) {
 			e->slowdown = FPS * 5;
@@ -1266,7 +1290,7 @@ static void init_weapons(void)
  * stage handling
  *---------------------------------------------------------------------------*/
 static const struct stage game_stages[MAX_STAGES] PROGMEM = {
-	{ 1, 3, 2, 0},
+	{ 1, 1, 0, 0},
 	{ 1, 3, 3, 1},
 	{ 1, 5, 3, 2},
 	{ 1, 5, 4, 2},
@@ -1363,6 +1387,17 @@ static const uint8_t vicious_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	 0, /* not used, dead */
 };
 
+static const uint8_t thief_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
+	 0, /* not used, approach door */
+	 0, /* walking left */
+	 0, /* walking right */
+	 0, /* attacking */
+	 4, /* resting/swearing */
+	 8, /* special */
+	 0, /* not used, dying */
+	 0, /* not used, dead */
+};
+
 static const uint8_t peaceful_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 	0, /* not used, approach door */
 	0, /* walking left */
@@ -1377,7 +1412,7 @@ static const uint8_t peaceful_enemy_sprite_offsets[ENEMY_MAX_STATE] = {
 static const uint8_t *enemy_sprite_offsets[ENEMY_MAX] = {
 	vicious_enemy_sprite_offsets,
 	vicious_enemy_sprite_offsets,
-	vicious_enemy_sprite_offsets,
+	thief_enemy_sprite_offsets,
 	boss_enemy_sprite_offsets,
 	peaceful_enemy_sprite_offsets,
 	peaceful_enemy_sprite_offsets,
@@ -1411,7 +1446,7 @@ static const int8_t enemy_rtime[ENEMY_MAX] PROGMEM = {
 
 static const int8_t enemy_atime[ENEMY_MAX] PROGMEM = {
 	MS_TO_FRAMES(150),
-	MS_TO_FRAMES(150),
+	MS_TO_FRAMES(200),
 	MS_TO_FRAMES(150),
 	MS_TO_FRAMES(200),
 	MS_TO_FRAMES(180),
@@ -1422,7 +1457,7 @@ static const int16_t enemy_score[ENEMY_MAX] PROGMEM = {
 	100,
 	150,
 	50,
-	4000,
+	1000,
 	-200,
 	-500,
 };
@@ -1451,7 +1486,7 @@ static const uint8_t enemy_default_frame_reloads[] = {
 	4, /* ENEMY_WALKING_RIGHT */
 	4, /* ENEMY_ATTACKING */
 	4, /* ENEMY_RESTING_SWEARING */
-	3, /* ENEMY_SPECIAL */
+	4, /* ENEMY_SPECIAL */
 	4, /* ENEMY_DYING */
 	4, /* ENEMY_DEAD */
 };
@@ -1711,8 +1746,11 @@ static void update_enemies(void)
 				}
 				break;
 			case ENEMY_THIEF:
-				if (e->x == e->dx)
+				if (e->x == e->dx) {
 					enemy_set_state(e, ENEMY_SPECIAL, 0);
+					enemy_set_state(e, ENEMY_RESTING_SWEARING, 1);
+					e->rtime = enemy_frame_reloads[e->id][e->state] * enemy_atime[e->id];
+				}
 				break;
 			default:
 				/* peaceful enemies just pass by */
@@ -1825,10 +1863,8 @@ static void update_enemies(void)
 		if (e->mtime == 0) {
 			if (e->state < ENEMY_DYING) {
 				e->mtime = pgm_read_byte(&enemy_mtime[e->id]);
-				if (e->slowdown) {
-					e->slowdown--;
+				if (e->slowdown)
 					e->mtime *= 8;
-				}
 			} else
 				e->mtime = 0;
 		} else
@@ -1837,6 +1873,8 @@ static void update_enemies(void)
 			e->hit--;
 		if (e->active == 0 && e->type != ENEMY_BOSS)
 			gd.ecount[e->type]--;
+		if (e->slowdown)
+			e->slowdown--;
 	} while (++i < MAX_ENEMIES);
 }
 
@@ -2176,7 +2214,7 @@ static void draw_scene(void)
 static const uint8_t *bullet_effect[NR_WEAPONS] = {
 	bomb_splash_img,
 	bomb_splash_img,
-	bomb_splash_img,
+	bomb_oil_img,
 	bomb_explode_img,
 };
 
@@ -2189,7 +2227,7 @@ static const uint8_t *bullet_effect_mask[NR_WEAPONS] = {
 
 static void draw_bullets(void)
 {
-	uint8_t b = 0;
+	uint8_t b = 0, y;
 	struct bullet *bs;
 	uint8_t width, height;
 
@@ -2198,9 +2236,14 @@ static void draw_bullets(void)
 		switch (bs->state) {
 		case BULLET_EFFECT:
 			width = img_width(bullet_effect[bs->weapon]);
-			height = img_height(bullet_effect[bs->weapon]);
+			if (bs->weapon == WEAPON_OIL)
+				y = lane_y[bs->lane] - 8;
+			else {
+				height = img_height(bullet_effect[bs->weapon]);
+				y = lane_y[bs->lane] - height;
+			}
 			blit_image_frame(bs->x - width / 2,
-					 lane_y[bs->lane] - height,
+					 y,
 					 bullet_effect[bs->weapon],
 					 bullet_effect_mask[bs->weapon],
 					 bs->frame,
@@ -2379,6 +2422,7 @@ run(void)
 	case GAME_STATE_OVER:
 	{
 		uint8_t ret = 0;
+		struct player *p = &gd.player;
 		ret += img_bump(&bi[0], characters_13x16_img, CHAR_G);
 		ret += img_bump(&bi[1], characters_13x16_img, CHAR_A);
 		ret += img_bump(&bi[2], characters_13x16_img, CHAR_M);
@@ -2388,6 +2432,7 @@ run(void)
 		ret += img_bump(&bi[6], characters_13x16_img, CHAR_E);
 		ret += img_bump(&bi[7], characters_13x16_img, CHAR_R);
 		if (ret == 8) {
+			draw_number(50, 50, p->score, 1000000, 1);
 			if (gp_timer_ticks & 1)
 				blit_image(118, 55, icon_a_img, NULL,
 					   __flag_white);

@@ -33,6 +33,7 @@ assets_w_mask="water_bomb_air
 	       powerups
 "
 
+if [ "$1" = "-a" ]; then
 # batch process all aseprite files to png/json files
 for asset in $assets
 do
@@ -42,6 +43,7 @@ for asset in $assets_w_mask
 do
 	cp ${asset}.json ${asset}_mask.json
 done
+fi
 
 # read all json files and convert them to C code
 ./conpack.py

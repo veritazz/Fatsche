@@ -307,7 +307,7 @@ if __name__ == "__main__":
 		# save l1 translation table
 		hfile.write("extern const uint8_t l1_table[%u];\n" % (table_len))
 		cfile.write("\n")
-		cfile.write("const uint8_t l1_table[%u] PROGMEM = {\n" % (table_len))
+		cfile.write("const uint8_t l1_table[%u] = {\n" % (table_len))
 		print_hex_array(l1_table, cfile)
 		cfile.write("\n};\n")
 

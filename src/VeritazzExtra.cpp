@@ -96,10 +96,11 @@ void VeritazzExtra::drawImage(int16_t x, int16_t y, const uint8_t *img,
 uint8_t VeritazzExtra::nextData(uint16_t o)
 {
 	uint8_t data;
+	uint16_t n = nibble + o;
 	static const uint8_t shifts[] = {4, 0};
 
-	data = pgm_read_byte(&packed[(nibble + o) / 2]);
-	return (data >> shifts[(nibble + o) & 0x1]) & 0xf;
+	data = pgm_read_byte(&packed[n / 2]);
+	return (data >> shifts[n & 0x1]) & 0xf;
 }
 
 void VeritazzExtra::advanceNibbles(uint16_t nibbles)
@@ -203,7 +204,7 @@ void VeritazzExtra::unpackBytes(uint8_t *buf, uint16_t len)
 		case 0xd:
 			/* 8 bit repeat count follows */
 			/* 4 bit keyed data follows */
-			buf[i] = pgm_read_byte(&xlate[value]);
+			buf[i] = xlate[value]; //pgm_read_byte(&xlate[value]);
 			break;
 		case 0xc:
 			/* 8 bit repeat count follows */
@@ -214,7 +215,7 @@ void VeritazzExtra::unpackBytes(uint8_t *buf, uint16_t len)
 			advance = 3;
 			break;
 		default:
-			buf[i] = pgm_read_byte(&xlate[last_token]);
+			buf[i] = xlate[last_token]; //pgm_read_byte(&xlate[last_token]);
 			break;
 		}
 		count--;

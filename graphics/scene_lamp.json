@@ -1,0 +1,19 @@
+{ "frames": {
+   "scene_lamp.ase": {
+    "frame": { "x": 0, "y": 0, "w": 7, "h": 24 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 7, "h": 24 },
+    "sourceSize": { "w": 7, "h": 24 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/scene_lamp.png",
+  "format": "I8",
+  "size": { "w": 7, "h": 24 },
+  "scale": "1"
+ }
+}

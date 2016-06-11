@@ -1,0 +1,19 @@
+{ "frames": {
+   "poison_damage.ase": {
+    "frame": { "x": 0, "y": 0, "w": 7, "h": 8 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 7, "h": 8 },
+    "sourceSize": { "w": 7, "h": 8 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/poison_damage.png",
+  "format": "I8",
+  "size": { "w": 7, "h": 8 },
+  "scale": "1"
+ }
+}

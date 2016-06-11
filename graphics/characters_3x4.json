@@ -1,0 +1,299 @@
+{ "frames": {
+   "characters_3x4 0.ase": {
+    "frame": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 1.ase": {
+    "frame": { "x": 3, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 2.ase": {
+    "frame": { "x": 6, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 3.ase": {
+    "frame": { "x": 9, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 4.ase": {
+    "frame": { "x": 12, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 5.ase": {
+    "frame": { "x": 15, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 6.ase": {
+    "frame": { "x": 18, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 7.ase": {
+    "frame": { "x": 21, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 8.ase": {
+    "frame": { "x": 24, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 9.ase": {
+    "frame": { "x": 27, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 10.ase": {
+    "frame": { "x": 30, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 11.ase": {
+    "frame": { "x": 33, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 12.ase": {
+    "frame": { "x": 36, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 13.ase": {
+    "frame": { "x": 39, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 14.ase": {
+    "frame": { "x": 42, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 15.ase": {
+    "frame": { "x": 45, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 16.ase": {
+    "frame": { "x": 48, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 17.ase": {
+    "frame": { "x": 51, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 18.ase": {
+    "frame": { "x": 54, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 19.ase": {
+    "frame": { "x": 57, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 20.ase": {
+    "frame": { "x": 60, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 21.ase": {
+    "frame": { "x": 63, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 22.ase": {
+    "frame": { "x": 66, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 23.ase": {
+    "frame": { "x": 69, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 24.ase": {
+    "frame": { "x": 72, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 25.ase": {
+    "frame": { "x": 75, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 26.ase": {
+    "frame": { "x": 78, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 27.ase": {
+    "frame": { "x": 81, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 28.ase": {
+    "frame": { "x": 84, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 29.ase": {
+    "frame": { "x": 87, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 30.ase": {
+    "frame": { "x": 90, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 31.ase": {
+    "frame": { "x": 93, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 32.ase": {
+    "frame": { "x": 96, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 33.ase": {
+    "frame": { "x": 99, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 34.ase": {
+    "frame": { "x": 102, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   },
+   "characters_3x4 35.ase": {
+    "frame": { "x": 105, "y": 0, "w": 3, "h": 4 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 3, "h": 4 },
+    "sourceSize": { "w": 3, "h": 4 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/characters_3x4.png",
+  "format": "I8",
+  "size": { "w": 108, "h": 4 },
+  "scale": "1"
+ }
+}

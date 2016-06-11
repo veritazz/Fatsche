@@ -1,0 +1,19 @@
+{ "frames": {
+   "game_background.ase": {
+    "frame": { "x": 0, "y": 0, "w": 128, "h": 46 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 128, "h": 46 },
+    "sourceSize": { "w": 128, "h": 46 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/game_background.png",
+  "format": "I8",
+  "size": { "w": 128, "h": 46 },
+  "scale": "1"
+ }
+}

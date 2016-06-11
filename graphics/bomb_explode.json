@@ -1,0 +1,75 @@
+{ "frames": {
+   "bomb_explode 0.ase": {
+    "frame": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 150
+   },
+   "bomb_explode 1.ase": {
+    "frame": { "x": 32, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 150
+   },
+   "bomb_explode 2.ase": {
+    "frame": { "x": 64, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 150
+   },
+   "bomb_explode 3.ase": {
+    "frame": { "x": 96, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 150
+   },
+   "bomb_explode 4.ase": {
+    "frame": { "x": 128, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 150
+   },
+   "bomb_explode 5.ase": {
+    "frame": { "x": 160, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 150
+   },
+   "bomb_explode 6.ase": {
+    "frame": { "x": 192, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 150
+   },
+   "bomb_explode 7.ase": {
+    "frame": { "x": 224, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 150
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/bomb_explode.png",
+  "format": "I8",
+  "size": { "w": 256, "h": 27 },
+  "scale": "1"
+ }
+}

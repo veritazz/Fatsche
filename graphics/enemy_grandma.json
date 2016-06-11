@@ -1,0 +1,75 @@
+{ "frames": {
+   "enemy_grandma 0.ase": {
+    "frame": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 100
+   },
+   "enemy_grandma 1.ase": {
+    "frame": { "x": 14, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 100
+   },
+   "enemy_grandma 2.ase": {
+    "frame": { "x": 28, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 100
+   },
+   "enemy_grandma 3.ase": {
+    "frame": { "x": 42, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 100
+   },
+   "enemy_grandma 4.ase": {
+    "frame": { "x": 56, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 100
+   },
+   "enemy_grandma 5.ase": {
+    "frame": { "x": 70, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 100
+   },
+   "enemy_grandma 6.ase": {
+    "frame": { "x": 84, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 100
+   },
+   "enemy_grandma 7.ase": {
+    "frame": { "x": 98, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/enemy_grandma.png",
+  "format": "I8",
+  "size": { "w": 112, "h": 16 },
+  "scale": "1"
+ }
+}

@@ -1,0 +1,131 @@
+{ "frames": {
+   "characters_13x16 0.ase": {
+    "frame": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 1.ase": {
+    "frame": { "x": 13, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 2.ase": {
+    "frame": { "x": 26, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 3.ase": {
+    "frame": { "x": 39, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 4.ase": {
+    "frame": { "x": 52, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 5.ase": {
+    "frame": { "x": 65, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 6.ase": {
+    "frame": { "x": 78, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 7.ase": {
+    "frame": { "x": 91, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 8.ase": {
+    "frame": { "x": 104, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 9.ase": {
+    "frame": { "x": 117, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 10.ase": {
+    "frame": { "x": 130, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 11.ase": {
+    "frame": { "x": 143, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 12.ase": {
+    "frame": { "x": 156, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 13.ase": {
+    "frame": { "x": 169, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   },
+   "characters_13x16 14.ase": {
+    "frame": { "x": 182, "y": 0, "w": 13, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 13, "h": 16 },
+    "sourceSize": { "w": 13, "h": 16 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/characters_13x16.png",
+  "format": "I8",
+  "size": { "w": 195, "h": 16 },
+  "scale": "1"
+ }
+}

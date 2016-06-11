@@ -1,0 +1,19 @@
+{ "frames": {
+   "mainscreen.ase": {
+    "frame": { "x": 0, "y": 0, "w": 122, "h": 52 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 122, "h": 52 },
+    "sourceSize": { "w": 122, "h": 52 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/mainscreen.png",
+  "format": "I8",
+  "size": { "w": 122, "h": 52 },
+  "scale": "1"
+ }
+}

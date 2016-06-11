@@ -1,0 +1,43 @@
+{ "frames": {
+   "weapons 0.ase": {
+    "frame": { "x": 0, "y": 0, "w": 26, "h": 13 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 26, "h": 13 },
+    "sourceSize": { "w": 26, "h": 13 },
+    "duration": 100
+   },
+   "weapons 1.ase": {
+    "frame": { "x": 26, "y": 0, "w": 26, "h": 13 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 26, "h": 13 },
+    "sourceSize": { "w": 26, "h": 13 },
+    "duration": 100
+   },
+   "weapons 2.ase": {
+    "frame": { "x": 52, "y": 0, "w": 26, "h": 13 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 26, "h": 13 },
+    "sourceSize": { "w": 26, "h": 13 },
+    "duration": 100
+   },
+   "weapons 3.ase": {
+    "frame": { "x": 78, "y": 0, "w": 26, "h": 13 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 26, "h": 13 },
+    "sourceSize": { "w": 26, "h": 13 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/weapons.png",
+  "format": "I8",
+  "size": { "w": 104, "h": 13 },
+  "scale": "1"
+ }
+}

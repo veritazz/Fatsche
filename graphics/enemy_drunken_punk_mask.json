@@ -1,0 +1,139 @@
+{ "frames": {
+   "enemy_drunken_punk 0.ase": {
+    "frame": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 150
+   },
+   "enemy_drunken_punk 1.ase": {
+    "frame": { "x": 14, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 150
+   },
+   "enemy_drunken_punk 2.ase": {
+    "frame": { "x": 28, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 150
+   },
+   "enemy_drunken_punk 3.ase": {
+    "frame": { "x": 42, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 150
+   },
+   "enemy_drunken_punk 4.ase": {
+    "frame": { "x": 56, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 200
+   },
+   "enemy_drunken_punk 5.ase": {
+    "frame": { "x": 70, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 200
+   },
+   "enemy_drunken_punk 6.ase": {
+    "frame": { "x": 84, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 200
+   },
+   "enemy_drunken_punk 7.ase": {
+    "frame": { "x": 98, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 200
+   },
+   "enemy_drunken_punk 8.ase": {
+    "frame": { "x": 112, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 150
+   },
+   "enemy_drunken_punk 9.ase": {
+    "frame": { "x": 126, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 150
+   },
+   "enemy_drunken_punk 10.ase": {
+    "frame": { "x": 140, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 150
+   },
+   "enemy_drunken_punk 11.ase": {
+    "frame": { "x": 154, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 150
+   },
+   "enemy_drunken_punk 12.ase": {
+    "frame": { "x": 168, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 200
+   },
+   "enemy_drunken_punk 13.ase": {
+    "frame": { "x": 182, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 200
+   },
+   "enemy_drunken_punk 14.ase": {
+    "frame": { "x": 196, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 200
+   },
+   "enemy_drunken_punk 15.ase": {
+    "frame": { "x": 210, "y": 0, "w": 14, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 14, "h": 16 },
+    "sourceSize": { "w": 14, "h": 16 },
+    "duration": 200
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/enemy_drunken_punk.png",
+  "format": "I8",
+  "size": { "w": 224, "h": 16 },
+  "scale": "1"
+ }
+}

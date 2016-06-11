@@ -1,0 +1,19 @@
+{ "frames": {
+   "bomb_explode_mask.ase": {
+    "frame": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 27 },
+    "sourceSize": { "w": 32, "h": 27 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/bomb_explode_mask.png",
+  "format": "I8",
+  "size": { "w": 32, "h": 27 },
+  "scale": "1"
+ }
+}

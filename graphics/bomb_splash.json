@@ -1,0 +1,43 @@
+{ "frames": {
+   "bomb_splash 0.ase": {
+    "frame": { "x": 0, "y": 0, "w": 8, "h": 6 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 8, "h": 6 },
+    "sourceSize": { "w": 8, "h": 6 },
+    "duration": 100
+   },
+   "bomb_splash 1.ase": {
+    "frame": { "x": 8, "y": 0, "w": 8, "h": 6 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 8, "h": 6 },
+    "sourceSize": { "w": 8, "h": 6 },
+    "duration": 100
+   },
+   "bomb_splash 2.ase": {
+    "frame": { "x": 16, "y": 0, "w": 8, "h": 6 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 8, "h": 6 },
+    "sourceSize": { "w": 8, "h": 6 },
+    "duration": 100
+   },
+   "bomb_splash 3.ase": {
+    "frame": { "x": 24, "y": 0, "w": 8, "h": 6 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 8, "h": 6 },
+    "sourceSize": { "w": 8, "h": 6 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.1.5-dev",
+  "image": "assets/bomb_splash.png",
+  "format": "I8",
+  "size": { "w": 32, "h": 6 },
+  "scale": "1"
+ }
+}

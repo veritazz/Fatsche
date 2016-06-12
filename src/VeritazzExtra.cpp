@@ -43,50 +43,6 @@ void VeritazzExtra::bootLogo()
 	delay(750);
 }
 
-void VeritazzExtra::drawBitmap(int16_t x, int16_t y, const uint8_t *img, uint8_t w, uint8_t h,
-                               uint8_t color)
-{
-	// no need to dar at all of we're offscreen
-	if (x + w < 0 || x > WIDTH - 1 || y + h < 0 || y > HEIGHT - 1)
-		return;
-
-	int yOffset = abs(y) % 8;
-	int sRow = y / 8;
-	int sCol = 0;
-	int eCol = w - (x + w > WIDTH ? (x + w) % WIDTH : 0);
-	if (y < 0) {
-		sRow--;
-		yOffset = 8 - yOffset;
-	}
-	if (x < 0)
-		sCol = abs(x);
-
-	int rows = h / 8;
-	if (h % 8 != 0) rows++;
-	int a = 0;
-	do {
-		int bRow = sRow + a;
-		if (bRow > (HEIGHT / 8) - 1) break;
-		if (bRow >= 0) {
-			for (int iCol = sCol; iCol < eCol; iCol++) {
-				if (iCol + x > (WIDTH - 1)) break;
-				if      (color == WHITE) this->sBuffer[ (bRow * WIDTH) + x + iCol ] |= pgm_read_byte(img + (a * w) + iCol) << yOffset;
-				else if (color == BLACK) this->sBuffer[ (bRow * WIDTH) + x + iCol ] &= ~(pgm_read_byte(img + (a * w) + iCol) << yOffset);
-				else                     this->sBuffer[ (bRow * WIDTH) + x + iCol ] ^= pgm_read_byte(img + (a * w) + iCol) << yOffset;
-			}
-		}
-
-		if (yOffset && bRow < (HEIGHT / 8) - 1 && bRow > -2) {
-			for (int iCol = sCol; iCol < eCol; iCol++) {
-				if (iCol + x > (WIDTH - 1)) break;
-				if      (color == WHITE) this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] |= pgm_read_byte(img + (a * w) + iCol) >> (8 - yOffset);
-				else if (color == BLACK) this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] &= ~(pgm_read_byte(img + (a * w) + iCol) >> (8 - yOffset));
-				else                     this->sBuffer[ ((bRow + 1)*WIDTH) + x + iCol ] ^= pgm_read_byte(img + (a * w) + iCol) >> (8 - yOffset);
-			}
-		}
-	} while (++a < rows);
-}
-
 void VeritazzExtra::drawImage(int16_t x, int16_t y, const uint8_t *img,
                               const uint8_t *mask, uint16_t flags)
 {
@@ -233,7 +189,7 @@ void VeritazzExtra::drawPackedImage(int16_t x, int16_t y, const uint8_t *img,
                                     uint8_t w, uint8_t h, uint16_t flags)
 {
 	// no need to dar at all of we're offscreen
-	if (x + w < 0 || x > WIDTH - 1 || y + h < 0 || y > HEIGHT - 1)
+	if (x + w <= 0 || x > WIDTH - 1 || y + h <= 0 || y > HEIGHT - 1)
 		return;
 
 	int yOffset = abs(y) % 8;

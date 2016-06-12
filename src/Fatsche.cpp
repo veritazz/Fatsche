@@ -1965,7 +1965,7 @@ static void update_powerups(void)
 			switch (pu->type) {
 			case POWER_UP_LIFE:
 				p->life += 64;
-				add_flying_number(pu->r.x, pu->r.x, 64);
+				add_flying_number(pu->r.x, pu->r.y, 64);
 				if (p->life > PLAYER_MAX_LIFE)
 					p->life = PLAYER_MAX_LIFE;
 				break;
@@ -1974,7 +1974,7 @@ static void update_powerups(void)
 				break;
 			case POWER_UP_SCORE:
 				p->score += 200;
-				add_flying_number(pu->r.x, pu->r.x, 100);
+				add_flying_number(pu->r.x, pu->r.y, 100);
 				break;
 			}
 		}

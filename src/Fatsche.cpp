@@ -25,14 +25,14 @@ SimpleButtons buttons(arduboy);
 #define PLAYER_MAX_LIFE             256       /* initial players life */
 #define NR_WEAPONS                  4
 #define MAX_AMMO_W1                 8
-#define MAX_AMMO_W2                 4
+#define MAX_AMMO_W2                 3
 #define MAX_AMMO_W3                 2
 #define MAX_AMMO_W4                 1
 #define NR_BULLETS                  \
 	(MAX_AMMO_W1 + MAX_AMMO_W2 + MAX_AMMO_W3 + MAX_AMMO_W4)
 #define MS_TO_FRAMES(m)             (((m) * FPS) / 1000)
 #define WEAPON1_COOLDOWN            (FPS / 3)
-#define WEAPON2_COOLDOWN            (FPS / 3)
+#define WEAPON2_COOLDOWN            (FPS / 2)
 #define WEAPON3_COOLDOWN            (FPS * 3)
 #define WEAPON4_COOLDOWN            (FPS * 10)
 #define MAX_FLYING_NUMBERS          (MAX_ENEMIES + MAX_POWERUPS + 10)
@@ -1035,7 +1035,7 @@ enum weapon_type {
 /* damage per bullet */
 static const uint8_t bullet_damage_table[NR_WEAPONS] = {
 	1,
-	4,
+	3,
 	2,
 	24};
 
@@ -1430,21 +1430,21 @@ static const uint8_t *enemy_sprite_offsets[ENEMY_MAX] = {
 };
 
 static const uint8_t enemy_damage[ENEMY_MAX] = {
-	4, /* raider */
-	6, /* punk */
+	8, /* raider */
+	10, /* punk */
 	0, /* hacker */
-	16, /* boss */
+	20, /* boss */
 	0, /* granny */
 	0, /* little girl */
 };
 
 static const int8_t enemy_life[ENEMY_MAX] = {
-	 16,
+	 20,
 	 24,
-	  5,
-	100,
-	  8,
-	 16,
+	 10,
+	200,
+	  6,
+	 10,
 };
 
 static const int8_t enemy_mtime[ENEMY_MAX] = {
@@ -1475,10 +1475,10 @@ static const int8_t enemy_atime[ENEMY_MAX] = {
 };
 
 static const int16_t enemy_score[ENEMY_MAX] = {
+	80,
 	100,
-	150,
 	50,
-	1000,
+	2000,
 	-200,
 	-500,
 };

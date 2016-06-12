@@ -33,7 +33,7 @@ SimpleButtons buttons(arduboy);
 #define MS_TO_FRAMES(m)             (((m) * FPS) / 1000)
 #define WEAPON1_COOLDOWN            (FPS / 3)
 #define WEAPON2_COOLDOWN            (FPS / 2)
-#define WEAPON3_COOLDOWN            (FPS * 3)
+#define WEAPON3_COOLDOWN            (FPS * 5)
 #define WEAPON4_COOLDOWN            (FPS * 10)
 #define MAX_FLYING_NUMBERS          (MAX_ENEMIES + MAX_POWERUPS + 10)
 #define MAX_STAGES                  4
@@ -374,7 +374,7 @@ enum game_states {
 };
 
 struct enemy {
-	int8_t life;
+	int16_t life;
 	int8_t x;
 	uint8_t dx;
 	uint8_t y;
@@ -1043,7 +1043,7 @@ static const uint8_t bullet_damage_table[NR_WEAPONS] = {
 static const uint16_t etime[NR_WEAPONS] = {
 	MS_TO_FRAMES(500), /* water */
 	MS_TO_FRAMES(500), /* poo */
-	FPS * 5, /* oil */
+	FPS * 10, /* oil */
 	FPS * 2, /* molotov */
 };
 
@@ -1301,9 +1301,9 @@ static void init_weapons(void)
  * stage handling
  *---------------------------------------------------------------------------*/
 static const struct stage game_stages[MAX_STAGES] PROGMEM = {
-	{ 20, 2, 2, 0},
-	{ 35, 3, 2, 1},
-	{ 50, 3, 2, 2},
+	{ 30, 2, 2, 0},
+	{ 45, 3, 2, 1},
+	{ 55, 3, 2, 2},
 	{ 70, 3, 2, 3},
 };
 
@@ -1438,20 +1438,20 @@ static const uint8_t enemy_damage[ENEMY_MAX] = {
 	0, /* little girl */
 };
 
-static const int8_t enemy_life[ENEMY_MAX] = {
+static const int16_t enemy_life[ENEMY_MAX] = {
 	 20,
 	 24,
-	 10,
+	 16,
 	200,
 	  6,
 	 10,
 };
 
 static const int8_t enemy_mtime[ENEMY_MAX] = {
-	MS_TO_FRAMES(100),
+	MS_TO_FRAMES(80),
+	MS_TO_FRAMES(120),
 	MS_TO_FRAMES(150),
-	MS_TO_FRAMES(170),
-	MS_TO_FRAMES(200),
+	MS_TO_FRAMES(180),
 	MS_TO_FRAMES(250),
 	MS_TO_FRAMES(350),
 };

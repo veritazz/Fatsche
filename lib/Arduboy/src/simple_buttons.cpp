@@ -12,7 +12,7 @@ SimpleButtons::SimpleButtons(Arduboy &a)
 void SimpleButtons::poll()
 {
   previousButtonState = currentButtonState;
-  currentButtonState = arduboy->getInput();
+  currentButtonState = arduboy->buttonsState();
   #ifdef SOFT_RESET
   if (currentButtonState==(LEFT_BUTTON|RIGHT_BUTTON|UP_BUTTON|DOWN_BUTTON)) {
     *(uint16_t *)0x0800 = 0x7777;

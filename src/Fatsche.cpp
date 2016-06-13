@@ -97,6 +97,7 @@ static void init_timers(void)
 static void run_timers(void)
 {
 	uint8_t t = 0;
+
 	do {
 		if (!timers[t].active)
 			continue;
@@ -301,30 +302,6 @@ uint8_t pressedRight(void)
 #endif
 
 /*---------------------------------------------------------------------------
- * timing
- *---------------------------------------------------------------------------*/
-
-static uint8_t next_frame(void)
-{
-	if (arduboy.nextFrame()) {
-#ifdef HOST_TEST
-		update_inputs();
-#else
-		buttons.poll();
-#endif
-		arduboy.clear();
-		run_timers();
-		return 1;
-	}
-	return 0;
-}
-
-static void finish_frame(void)
-{
-	arduboy.display();
-}
-
-/*---------------------------------------------------------------------------
  * data types
  *---------------------------------------------------------------------------*/
 struct rect {
@@ -338,8 +315,8 @@ struct menu_drop {
 	uint8_t idx;
 	uint16_t stime; /* show time of next drop */
 	uint8_t atime; /* time till next frame */
-	uint8_t state:4; /* state of drop */
-	uint8_t frame:4; /* current frame of drop */
+	uint8_t state; /* state of drop */
+	uint8_t frame; /* current frame of drop */
 	uint8_t x;
 	uint8_t y;
 };
@@ -404,8 +381,8 @@ struct enemy {
 };
 
 struct door {
-	uint8_t under_attack:1;
-	uint8_t boss:2;
+	uint8_t under_attack;
+	uint8_t boss;
 	struct enemy *attacker;
 };
 
@@ -474,6 +451,32 @@ struct game_data {
 };
 
 static struct game_data gd;
+
+/*---------------------------------------------------------------------------
+ * timing
+ *---------------------------------------------------------------------------*/
+
+static uint8_t next_frame(void)
+{
+	if (arduboy.nextFrame()) {
+#ifdef HOST_TEST
+		update_inputs();
+#else
+		buttons.poll();
+#endif
+		arduboy.clear();
+		if (!gd.pause)
+			run_timers();
+		return 1;
+	}
+	return 0;
+}
+
+static void finish_frame(void)
+{
+	arduboy.display();
+}
+
 /*---------------------------------------------------------------------------
  * setup
  *---------------------------------------------------------------------------*/
@@ -483,8 +486,6 @@ setup(void)
 	arduboy.initRandomSeed();
 	arduboy.setFrameRate(FPS);
 	arduboy.begin();
-	arduboy.clear();
-	arduboy.display();
 	init_timers();
 }
 
@@ -633,11 +634,9 @@ static void print_text(const char *t, uint8_t x, uint8_t y, uint8_t options)
 		c = pgm_read_byte(t++);
 		if (!c)
 			break;
-		switch (c) {
-		case ' ':
+		if (c == ' ') {
 			flags |= 1;
-			break;
-		case '\n':
+		} else if (c == '\n') {
 			if (options & __text_centered) {
 				len = line_length(t);
 				x = (WIDTH - len * 4) / 2;
@@ -645,13 +644,11 @@ static void print_text(const char *t, uint8_t x, uint8_t y, uint8_t options)
 			cy += 5;
 			cx = x;
 			flags |= 3;
-			break;
-		default:
+		} else {
 			if (c <= 57)
 				c -= 48;
 			else if (c <= 122)
 				c -= 87;
-			break;
 		}
 		if ((flags & 1) == 0)
 			blit_image_frame(cx,
@@ -842,22 +839,17 @@ mainscreen(void)
 		if (drop->state == 4)
 			menu_drop_init(drop);
 
-		switch (drop->state) {
-		case 0:
+		if (drop->state == 0) {
 			drop->x = menu_drop_x_locations[drop->idx];
 			drop->y = menu_drop_y_locations[drop->idx];
-			break;
-		case 1:
+		} else if (drop->state == 1) {
 			drop->y = menu_drop_y_locations[drop->idx] + 7;
-			break;
-		case 2:
+		} else if (drop->state == 2) {
 			drop->x = menu_drop_x_locations[drop->idx] + 2;
 			drop->y += 3;
-			break;
-		case 3:
+		} else {
 			drop->x = menu_drop_x_locations[drop->idx];
 			drop->y = 55;
-			break;
 		}
 		drop->atime = menu_drop_atime[drop->state];
 		drop->frame++;
@@ -868,7 +860,7 @@ mainscreen(void)
 
 static const char help_move_str[] PROGMEM = "move player";
 static const char help_select_str[] PROGMEM = "weapon sel";
-static const char help_a_str[] PROGMEM = "uppler lane";
+static const char help_a_str[] PROGMEM = "upper lane";
 static const char help_b_str[] PROGMEM = "lower lane";
 static const char help_back_str[] PROGMEM = "pause";
 
@@ -877,8 +869,7 @@ help(void)
 {
 	uint8_t rstate = PROGRAM_SHOW_HELP;
 
-	switch (gd.game_state) {
-	case GAME_STATE_INIT:
+	if (gd.game_state == GAME_STATE_INIT) {
 		init_timers();
 		/* setup general purpose timer to 1s */
 		gp_timer_ticks = 0;
@@ -886,8 +877,7 @@ help(void)
 		start_timer(TIMER_GP, FPS);
 		delay(500);
 		gd.game_state = GAME_STATE_RUN_GAME;
-		break;
-	case GAME_STATE_RUN_GAME:
+	} else if (gd.game_state == GAME_STATE_RUN_GAME) {
 		blit_image(0, 0, help_screen_img, NULL, __flag_white);
 		print_text(help_move_str, 32, 9, 0);
 		print_text(help_select_str, 32, 20, 0);
@@ -898,15 +888,11 @@ help(void)
 			blit_image(64, 55, icon_a_img, NULL, __flag_white);
 		if (pressedA())
 			gd.game_state = GAME_STATE_CLEANUP;
-		break;
-	case GAME_STATE_CLEANUP:
+	} else if (gd.game_state == GAME_STATE_CLEANUP) {
 		init_timers();
 		memset(&gd, 0, sizeof(gd));
 		rstate = PROGRAM_MAIN_MENU;
 		delay(500);
-		break;
-	default:
-		break;
 	}
 	return rstate;
 }
@@ -1082,6 +1068,7 @@ static uint8_t do_damage_from_explosion(struct bullet *b, struct rect *r)
 
 	if (b->weapon == WEAPON_OIL)
 		rdx = 8;
+
 	x1 = b->x - rdx;
 	x2 = b->x + rdx;
 
@@ -1133,14 +1120,9 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 	else
 		b = p->previous_state;
 
-	switch (b) {
-	case PLAYER_L_MOVE:
-		x = p->x;
-		break;
-	case PLAYER_R_MOVE:
-		x = p->x + img_width(player_all_frames_img) -
-		    img_width(water_bomb_air_img);
-		break;
+	x = p->x;
+	if (b == PLAYER_R_MOVE) {
+		x += img_width(player_all_frames_img) - img_width(water_bomb_air_img);
 	}
 
 	/* create a new bullet, do nothing if not possible */
@@ -1424,19 +1406,19 @@ static const uint8_t *enemy_sprite_offsets[ENEMY_MAX] = {
 };
 
 static const uint8_t enemy_damage[ENEMY_MAX] = {
-	8, /* raider */
-	10, /* punk */
+	7, /* raider */
+	9, /* punk */
 	0, /* hacker */
 	20, /* boss */
 	0, /* granny */
 	0, /* little girl */
 };
 
-static const int16_t enemy_life[ENEMY_MAX] = {
-	 20,
-	 24,
+static const int8_t enemy_life[ENEMY_MAX] = {
+	 19,
+	 22,
 	 16,
-	200,
+	120,
 	  6,
 	 10,
 };
@@ -1657,7 +1639,7 @@ static uint8_t enemy_switch_lane(struct enemy *e, uint8_t lane, uint8_t y)
 	return 0;
 }
 
-static void enemy_prepare_direction_change(struct enemy *e) //, uint8_t width)
+static void enemy_prepare_direction_change(struct enemy *e)
 {
 	uint8_t min;
 	e->dlane = 1 + random8(2);
@@ -1962,20 +1944,16 @@ static void update_powerups(void)
 		if (get_bullet_damage(pu->lane, &pu->r)) {
 			pu->active = 0;
 			start_timer(TIMER_POWERUP_SPAWN + i, (random8(8) + 4) * FPS);
-			switch (pu->type) {
-			case POWER_UP_LIFE:
+			if (pu->type == POWER_UP_LIFE) {
 				p->life += 64;
 				add_flying_number(pu->r.x, pu->r.y, 64);
 				if (p->life > PLAYER_MAX_LIFE)
 					p->life = PLAYER_MAX_LIFE;
-				break;
-			case POWER_UP_POISON:
+			} else if (pu->type == POWER_UP_POISON) {
 				player_set_poison();
-				break;
-			case POWER_UP_SCORE:
+			} else {
 				p->score += 200;
 				add_flying_number(pu->r.x, pu->r.y, 100);
-				break;
 			}
 		}
 
@@ -1986,8 +1964,7 @@ static void update_powerups(void)
 
 		pu->atime = MS_TO_FRAMES(150);
 		pu->frame++;
-		if (pu->frame == 4)
-			pu->frame = 0;
+		pu->frame &= 0x3;
 	} while (++i < MAX_POWERUPS);
 }
 
@@ -2247,14 +2224,14 @@ static void draw_bullets(void)
 
 	do {
 		bs = &gd.ws.bs[b];
-		switch (bs->state) {
-		case BULLET_EFFECT:
+		if (bs->state == BULLET_EFFECT) {
 			width = img_width(bullet_effect[bs->weapon]);
+			y = lane_y[bs->lane];
 			if (bs->weapon == WEAPON_OIL)
-				y = lane_y[bs->lane] - 4;
+				y -= 4;
 			else {
 				height = img_height(bullet_effect[bs->weapon]);
-				y = lane_y[bs->lane] - height;
+				y -= height;
 			}
 			blit_image_frame(bs->x - width / 2,
 					 y,
@@ -2262,25 +2239,20 @@ static void draw_bullets(void)
 					 bullet_effect_mask[bs->weapon],
 					 bs->frame,
 					 __flag_white | __flag_mask_single);
-			break;
-		case BULLET_SPLASH:
+		} else if (bs->state == BULLET_SPLASH) {
 			blit_image_frame(bs->x,
 					 bs->ys,
 					 bomb_splash_img,
 					 NULL,
 					 bs->frame,
 					 __flag_white);
-			break;
-		case BULLET_ACTIVE:
+		} else if (bs->state == BULLET_ACTIVE) {
 			blit_image_frame(bs->x,
 					 bs->ys,
 					 water_bomb_air_img,
 					 water_bomb_air_mask_img,
 					 bs->frame,
 					 __flag_white);
-			break;
-		default:
-			break;
 		}
 	} while (++b < NR_BULLETS);
 }
@@ -2507,4 +2479,5 @@ loop(void)
 	main_state = main_state_fn[main_state]();
 
 	finish_frame();
+	arduboy.idle();
 }

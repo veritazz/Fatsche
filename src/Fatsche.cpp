@@ -68,30 +68,6 @@ enum program_states {
 };
 
 /*---------------------------------------------------------------------------
- * graphic functions
- *---------------------------------------------------------------------------*/
-#define blit_image(a, b, c, d, e)		arduboy.drawImage(a, b, c, d, e)
-#define blit_image_frame(a, b, c, d, e, f)	arduboy.drawImageFrame(a, b, c, d, e, f)
-
-static void
-draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
-{
-	arduboy.drawRect(x, y, w, h, WHITE);
-}
-
-static void
-draw_hline(uint8_t x, uint8_t y, uint8_t w)
-{
-	arduboy.drawFastHLine(x, y, w, WHITE);
-}
-
-static void
-draw_vline(uint8_t x, uint8_t y, uint8_t h)
-{
-	arduboy.drawFastVLine(x, y, h, WHITE);
-}
-
-/*---------------------------------------------------------------------------
  * timers
  *---------------------------------------------------------------------------*/
 enum timers {
@@ -157,6 +133,30 @@ static void gp_timer_count_fn(void)
 {
 	gp_timer_ticks++;
 	start_timer(TIMER_GP, FPS / 2);
+}
+
+/*---------------------------------------------------------------------------
+ * graphic functions
+ *---------------------------------------------------------------------------*/
+#define blit_image(a, b, c, d, e)		arduboy.drawImage(a, b, c, d, e)
+#define blit_image_frame(a, b, c, d, e, f)	arduboy.drawImageFrame(a, b, c, d, e, f)
+
+static void
+draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+{
+	arduboy.drawRect(x, y, w, h, WHITE);
+}
+
+static void
+draw_hline(uint8_t x, uint8_t y, uint8_t w)
+{
+	arduboy.drawFastHLine(x, y, w, WHITE);
+}
+
+static void
+draw_vline(uint8_t x, uint8_t y, uint8_t h)
+{
+	arduboy.drawFastVLine(x, y, h, WHITE);
 }
 
 /*---------------------------------------------------------------------------

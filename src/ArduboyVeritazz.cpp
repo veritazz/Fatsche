@@ -1,10 +1,6 @@
-#include "Arduboy.h"
-#ifndef HOST_TEST
-#include "glcdfont.c"
-#endif
-#include "ab_logo.c"
+#include "ArduboyVeritazz.h"
 
-Arduboy::Arduboy()
+ArduboyVeritazz::ArduboyVeritazz()
 {
   // frame management
   setFrameRate(60);
@@ -17,84 +13,41 @@ Arduboy::Arduboy()
   // lastFrameDurationMs
 }
 
-void Arduboy::start() // deprecated
-{
-  begin();
-}
-
 // functions called here should be public so users can create their
 // own init functions if they need different behavior than `begin`
 // provides by default
-void Arduboy::begin()
+void ArduboyVeritazz::begin()
 {
-#ifndef HOST_TEST
   boot(); // raw hardware
 
   // utils
   if(pressed(UP_BUTTON)) {
-    flashlight();
+    doNothing();
   }
-#endif
-
-  bootLogo();
-
-#ifndef HOST_TEST
-  audio.begin();
-#endif
 }
 
-void Arduboy::flashlight()
+void ArduboyVeritazz::doNothing()
 {
-#ifndef HOST_TEST
-  // sendLCDCommand(OLED_ALL_PIXELS_ON); // smaller than allPixelsOn()
   blank();
-  setRGBled(255,255,255);
   while(!pressed(DOWN_BUTTON)) {
     idle();
   }
-  setRGBled(0,0,0);
-#endif
-}
-
-void Arduboy::bootLogo()
-{
-  // setRGBled(10,0,0);
-  for(int8_t y = -18; y<=24; y++) {
-#ifndef HOST_TEST
-    setRGBled(24-y, 0, 0);
-#endif
-
-    clear();
-    drawBitmap(20,y, arduboy_logo, 88, 16, WHITE);
-    display();
-    delay(27);
-    // longer delay post boot, we put it inside the loop to
-    // save the flash calling clear/delay again outside the loop
-    if (y==-16) {
-      delay(250);
-    }
-  }
-
-  delay(750);
-#ifndef HOST_TEST
-  setRGBled(0,0,0);
-#endif
 }
 
 /* Frame management */
 
-void Arduboy::setFrameRate(uint8_t rate)
+void ArduboyVeritazz::setFrameRate(uint8_t rate)
 {
   frameRate = rate;
   eachFrameMillis = 1000/rate;
 }
 
-bool Arduboy::everyXFrames(uint8_t frames)
+bool ArduboyVeritazz::everyXFrames(uint8_t frames)
 {
   return frameCount % frames == 0;
 }
 
-bool Arduboy::nextFrame()
+bool ArduboyVeritazz::nextFrame()
 {
   long now = millis();
   uint8_t remaining;
@@ -111,10 +64,9 @@ bool Arduboy::nextFrame()
     remaining = nextFrameStart - now;
     // if we have more than 1ms to spare, lets sleep
     // we should be woken up by timer0 every 1ms, so this should be ok
-#ifndef HOST_TEST
     if (remaining > 1)
       idle();
-#endif //XXX
+
     return false;
   }
 
@@ -144,12 +96,12 @@ bool Arduboy::nextFrame()
   return post_render;
 }
 
-int Arduboy::cpuLoad()
+int ArduboyVeritazz::cpuLoad()
 {
   return lastFrameDurationMs*100 / eachFrameMillis;
 }
 
-void Arduboy::initRandomSeed()
+void ArduboyVeritazz::initRandomSeed()
 {
 #ifndef HOST_TEST
   power_adc_enable(); // ADC on
@@ -158,7 +110,7 @@ void Arduboy::initRandomSeed()
 #endif
 }
 
-uint16_t Arduboy::rawADC(uint8_t adc_bits)
+uint16_t ArduboyVeritazz::rawADC(uint8_t adc_bits)
 {
 #ifndef HOST_TEST
   ADMUX = adc_bits;
@@ -178,17 +130,12 @@ uint16_t Arduboy::rawADC(uint8_t adc_bits)
 
 /* Graphics */
 
-void Arduboy::clearDisplay() // deprecated
-{
-  clear();
-}
-
-void Arduboy::clear()
+void ArduboyVeritazz::clear()
 {
   fillScreen(BLACK);
 }
 
-void Arduboy::drawPixel(int x, int y, uint8_t color)
+void ArduboyVeritazz::drawPixel(int x, int y, uint8_t color)
 {
   #ifdef PIXEL_SAFE_MODE
   if (x < 0 || x > (WIDTH-1) || y < 0 || y > (HEIGHT-1))
@@ -208,14 +155,14 @@ void Arduboy::drawPixel(int x, int y, uint8_t color)
   }
 }
 
-uint8_t Arduboy::getPixel(uint8_t x, uint8_t y)
+uint8_t ArduboyVeritazz::getPixel(uint8_t x, uint8_t y)
 {
   uint8_t row = y / 8;
   uint8_t bit_position = y % 8;
   return (sBuffer[(row*WIDTH) + x] & _BV(bit_position)) >> bit_position;
 }
 
-void Arduboy::drawCircle(int16_t x0, int16_t y0, uint8_t r, uint8_t color)
+void ArduboyVeritazz::drawCircle(int16_t x0, int16_t y0, uint8_t r, uint8_t color)
 {
   int16_t f = 1 - r;
   int16_t ddF_x = 1;
@@ -252,7 +199,7 @@ void Arduboy::drawCircle(int16_t x0, int16_t y0, uint8_t r, uint8_t color)
   }
 }
 
-void Arduboy::drawCircleHelper
+void ArduboyVeritazz::drawCircleHelper
 (int16_t x0, int16_t y0, uint8_t r, uint8_t cornername, uint8_t color)
 {
   int16_t f = 1 - r;
@@ -297,13 +244,13 @@ void Arduboy::drawCircleHelper
   }
 }
 
-void Arduboy::fillCircle(int16_t x0, int16_t y0, uint8_t r, uint8_t color)
+void ArduboyVeritazz::fillCircle(int16_t x0, int16_t y0, uint8_t r, uint8_t color)
 {
   drawFastVLine(x0, y0-r, 2*r+1, color);
   fillCircleHelper(x0, y0, r, 3, 0, color);
 }
 
-void Arduboy::fillCircleHelper
+void ArduboyVeritazz::fillCircleHelper
 (int16_t x0, int16_t y0, uint8_t r, uint8_t cornername, int16_t delta,
  uint8_t color)
 {
@@ -341,7 +288,7 @@ void Arduboy::fillCircleHelper
   }
 }
 
-void Arduboy::drawLine
+void ArduboyVeritazz::drawLine
 (int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color)
 {
   // bresenham's algorithm - thx wikpedia
@@ -392,7 +339,7 @@ void Arduboy::drawLine
   }
 }
 
-void Arduboy::drawRect
+void ArduboyVeritazz::drawRect
 (int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t color)
 {
   drawFastHLine(x, y, w, color);
@@ -401,7 +348,7 @@ void Arduboy::drawRect
   drawFastVLine(x+w-1, y, h, color);
 }
 
-void Arduboy::drawFastVLine
+void ArduboyVeritazz::drawFastVLine
 (int16_t x, int16_t y, uint8_t h, uint8_t color)
 {
   int end = y+h;
@@ -411,7 +358,7 @@ void Arduboy::drawFastVLine
   }
 }
 
-void Arduboy::drawFastHLine
+void ArduboyVeritazz::drawFastHLine
 (int16_t x, int16_t y, uint8_t w, uint8_t color)
 {
   // Do bounds/limit checks
@@ -458,7 +405,7 @@ void Arduboy::drawFastHLine
   }
 }
 
-void Arduboy::fillRect
+void ArduboyVeritazz::fillRect
 (int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t color)
 {
   // stupidest version - update in subclasses if desired!
@@ -468,7 +415,7 @@ void Arduboy::fillRect
   }
 }
 
-void Arduboy::fillScreen(uint8_t color)
+void ArduboyVeritazz::fillScreen(uint8_t color)
 {
 #ifndef HOST_TEST
   // C version :
@@ -507,11 +454,11 @@ void Arduboy::fillScreen(uint8_t color)
   );
 #else
   if (color) color = 0xFF;  //change any nonzero argument to b11111111 and insert into screen array.
-  for(int16_t i=0; i<1024; i++)  { sBuffer[i] = color; }  //sBuffer = (128*64) = 8192/8 = 1024 bytes.
+  memset(sBuffer, color, WIDTH * HEIGHT / 8);
 #endif
 }
 
-void Arduboy::drawRoundRect
+void ArduboyVeritazz::drawRoundRect
 (int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t r, uint8_t color)
 {
   // smarter version
@@ -526,7 +473,7 @@ void Arduboy::drawRoundRect
   drawCircleHelper(x+r, y+h-r-1, r, 8, color);
 }
 
-void Arduboy::fillRoundRect
+void ArduboyVeritazz::fillRoundRect
 (int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t r, uint8_t color)
 {
   // smarter version
@@ -537,7 +484,7 @@ void Arduboy::fillRoundRect
   fillCircleHelper(x+r, y+r, r, 2, h-2*r-1, color);
 }
 
-void Arduboy::drawTriangle
+void ArduboyVeritazz::drawTriangle
 (int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint8_t color)
 {
   drawLine(x0, y0, x1, y1, color);
@@ -545,7 +492,7 @@ void Arduboy::drawTriangle
   drawLine(x2, y2, x0, y0, color);
 }
 
-void Arduboy::fillTriangle
+void ArduboyVeritazz::fillTriangle
 (int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint8_t color)
 {
 
@@ -648,7 +595,7 @@ void Arduboy::fillTriangle
   }
 }
 
-void Arduboy::drawBitmap
+void ArduboyVeritazz::drawBitmap
 (int16_t x, int16_t y, const uint8_t *bitmap, uint8_t w, uint8_t h,
  uint8_t color)
 {
@@ -688,7 +635,7 @@ void Arduboy::drawBitmap
 }
 
 
-void Arduboy::drawSlowXYBitmap
+void ArduboyVeritazz::drawSlowXYBitmap
 (int16_t x, int16_t y, const uint8_t *bitmap, uint8_t w, uint8_t h, uint8_t color)
 {
   // no need to dar at all of we're offscreen
@@ -705,57 +652,11 @@ void Arduboy::drawSlowXYBitmap
   }
 }
 
-
-void Arduboy::drawChar
-(int16_t x, int16_t y, unsigned char c, uint8_t color, uint8_t bg, uint8_t size)
-{
-#ifndef HOST_TEST
-  bool draw_background = bg != color;
-
-  if ((x >= WIDTH) ||         // Clip right
-    (y >= HEIGHT) ||        // Clip bottom
-    ((x + 5 * size - 1) < 0) ||   // Clip left
-    ((y + 8 * size - 1) < 0)    // Clip top
-  )
-  {
-    return;
-  }
-
-  for (int8_t i=0; i<6; i++ )
-  {
-    uint8_t line;
-    if (i == 5)
-    {
-      line = 0x0;
-    }
-    else
-    {
-      line = pgm_read_byte(font+(c*5)+i);
-    }
-
-    for (int8_t j = 0; j<8; j++)
-    {
-      uint8_t draw_color = (line & 0x1) ? color : bg;
-
-      if (draw_color || draw_background) {
-        for (uint8_t a = 0; a < size; a++ ) {
-          for (uint8_t b = 0; b < size; b++ ) {
-            drawPixel(x + (i * size) + a, y + (j * size) + b, draw_color);
-          }
-        }
-      }
-      line >>= 1;
-    }
-  }
-#endif
-}
-
-
 #ifdef HOST_TEST
 extern void update_screen();
 #endif
 
-void Arduboy::display()
+void ArduboyVeritazz::display()
 {
 #ifndef HOST_TEST
   this->paintScreen(sBuffer);
@@ -764,29 +665,117 @@ void Arduboy::display()
 #endif
 }
 
-unsigned char* Arduboy::getBuffer()
+unsigned char* ArduboyVeritazz::getBuffer()
 {
   return sBuffer;
 }
 
-bool Arduboy::pressed(uint8_t buttons)
-{
-#ifndef HOST_TEST
-  return (buttonsState() & buttons) == buttons;
-#endif
-}
-
-bool Arduboy::notPressed(uint8_t buttons)
-{
-#ifndef HOST_TEST
-  return (buttonsState() & buttons) == 0;
-#endif
-}
-
-void Arduboy::swap(int16_t& a, int16_t& b)
+void ArduboyVeritazz::swap(int16_t& a, int16_t& b)
 {
   int temp = a;
   a = b;
   b = temp;
 }
 
+/* simple_buttons */
+
+void ArduboyVeritazz::poll()
+{
+  previousButtonState = currentButtonState;
+  currentButtonState = buttonsState();
+  #if defined(SOFT_RESET) && !defined(HOST_TEST)
+  if (currentButtonState==(LEFT_BUTTON|RIGHT_BUTTON|UP_BUTTON|DOWN_BUTTON)) {
+    *(uint16_t *)0x0800 = 0x7777;
+    wdt_enable(WDTO_15MS);
+    while(true) {}
+  }
+  #endif
+}
+
+// returns true if the button mask passed in is pressed
+//
+//   if (pressed(LEFT_BUTTON + A_BUTTON))
+boolean ArduboyVeritazz::pressed(uint8_t buttons)
+{
+ return (currentButtonState & buttons) == buttons;
+}
+
+// returns true if a button that has been held down was just released
+// this function only reliably works with a single button. You should not
+// pass it multiple buttons as you can with some of the other button
+// functions.
+//
+// This can be used for confirmations or other times when you want to take
+// an action AFTER the user finishes the pressing rather than immediately
+// when the button goes down.  Not that there is any good way for someone
+// to change their mind, but the experience can feel very different.
+boolean ArduboyVeritazz::justReleased(uint8_t button)
+{
+ return ((previousButtonState & button) && !(currentButtonState & button));
+}
+
+// returns true if a button has just been pressed
+// if the button has been held down for multiple frames this will return
+// false.  You should only use this to poll a single button.
+boolean ArduboyVeritazz::justPressed(uint8_t button)
+{
+ return (!(previousButtonState & button) && (currentButtonState & button));
+}
+
+// returns true if the button mask passed in not pressed
+//
+//   if (not_pressed(LEFT_BUTTON))
+boolean ArduboyVeritazz::notPressed(uint8_t buttons)
+{
+  return (currentButtonState & buttons) == 0;
+}
+
+boolean ArduboyVeritazz::up() {
+  return pressed(UP_BUTTON);
+}
+
+boolean ArduboyVeritazz::down() {
+  return pressed(DOWN_BUTTON);
+}
+
+boolean ArduboyVeritazz::right() {
+  return pressed(RIGHT_BUTTON);
+}
+
+boolean ArduboyVeritazz::left() {
+  return pressed(LEFT_BUTTON);
+}
+
+boolean ArduboyVeritazz::a() {
+  return pressed(A_BUTTON);
+}
+
+boolean ArduboyVeritazz::b() {
+  return pressed(B_BUTTON);
+}
+
+
+
+boolean ArduboyVeritazz::pressedUp() {
+  return justPressed(UP_BUTTON);
+}
+
+boolean ArduboyVeritazz::pressedDown() {
+  return justPressed(DOWN_BUTTON);
+}
+
+boolean ArduboyVeritazz::pressedRight() {
+  return justPressed(RIGHT_BUTTON);
+}
+
+boolean ArduboyVeritazz::pressedLeft() {
+  return justPressed(LEFT_BUTTON);
+}
+
+boolean ArduboyVeritazz::pressedA() {
+  return justPressed(A_BUTTON);
+}
+
+boolean ArduboyVeritazz::pressedB() {
+  return justPressed(B_BUTTON);
+}

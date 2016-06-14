@@ -1,7 +1,7 @@
 #ifndef VeritazzExtra_h
 #define VeritazzExtra_h
 
-#include "Arduboy.h"
+#include "ArduboyVeritazz.h"
 
 #ifdef HOST_TEST
 extern uint8_t get_inputs(void);
@@ -22,7 +22,7 @@ extern uint8_t get_inputs(void);
 #define img_height(i)                pgm_read_byte((i) + 1)
 #define img_offset(i, o)             pgm_read_word((i) + 2 + ((o) * 2))
 
-class VeritazzExtra: public Arduboy
+class VeritazzExtra: public ArduboyVeritazz
 {
 public:
 	VeritazzExtra(const uint8_t *xlate);

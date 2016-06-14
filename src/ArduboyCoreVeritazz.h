@@ -1,7 +1,8 @@
-#ifndef ArduboyCore_h
-#define ArduboyCore_h
+#ifndef ArduboyCoreVeritazz_h
+#define ArduboyCoreVeritazz_h
 
 #ifndef HOST_TEST
+#include <EEPROM.h>
 #include <avr/power.h>
 #include <SPI.h>
 #include <avr/sleep.h>
@@ -165,10 +166,10 @@ static inline void delay(unsigned int ms)
 #define PAGE_ADDRESS_END ((HEIGHT/8)-1) & 7    // 8 pages high
 
 
-class ArduboyCore
+class ArduboyCoreVeritazz
 {
 public:
-    ArduboyCore();
+    ArduboyCoreVeritazz();
 
     /// allows the CPU to idle between frames
     /**

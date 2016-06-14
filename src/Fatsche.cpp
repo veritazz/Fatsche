@@ -9,10 +9,6 @@ VeritazzExtra arduboy(l1_table);
 #include <Arduino.h>
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
-#include "simple_buttons.h"
-
-SimpleButtons buttons(arduboy);
-
 #endif
 
 /*---------------------------------------------------------------------------
@@ -251,52 +247,52 @@ uint8_t right(void)
 #else
 uint8_t a(void)
 {
-	return buttons.a();
+	return arduboy.a();
 }
 uint8_t b(void)
 {
-	return buttons.b();
+	return arduboy.b();
 }
 uint8_t up(void)
 {
-	return buttons.up();
+	return arduboy.up();
 }
 uint8_t down(void)
 {
-	return buttons.down();
+	return arduboy.down();
 }
 uint8_t left(void)
 {
-	return buttons.left();
+	return arduboy.left();
 }
 uint8_t right(void)
 {
-	return buttons.right();
+	return arduboy.right();
 }
 
 uint8_t pressedA(void)
 {
-	return buttons.pressedA();
+	return arduboy.pressedA();
 }
 uint8_t pressedB(void)
 {
-	return buttons.pressedB();
+	return arduboy.pressedB();
 }
 uint8_t pressedUp(void)
 {
-	return buttons.pressedUp();
+	return arduboy.pressedUp();
 }
 uint8_t pressedDown(void)
 {
-	return buttons.pressedDown();
+	return arduboy.pressedDown();
 }
 uint8_t pressedLeft(void)
 {
-	return buttons.pressedLeft();
+	return arduboy.pressedLeft();
 }
 uint8_t pressedRight(void)
 {
-	return buttons.pressedRight();
+	return arduboy.pressedRight();
 }
 
 #endif
@@ -462,7 +458,7 @@ static uint8_t next_frame(void)
 #ifdef HOST_TEST
 		update_inputs();
 #else
-		buttons.poll();
+		arduboy.poll();
 #endif
 		arduboy.clear();
 		if (!gd.pause)

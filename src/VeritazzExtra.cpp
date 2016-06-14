@@ -8,21 +8,12 @@ VeritazzExtra::VeritazzExtra(const uint8_t *xlate)
 
 void VeritazzExtra::begin()
 {
-#ifndef HOST_TEST
 	boot();
 
-	if (pressed(UP_BUTTON)) {
-		do {
-			idle();
-		} while (!pressed(DOWN_BUTTON));
-	}
-#endif
+	if (pressed(UP_BUTTON))
+		doNothing();
 
 	bootLogo();
-
-#ifndef HOST_TEST
-	audio.begin();
-#endif
 }
 
 void VeritazzExtra::bootLogo()

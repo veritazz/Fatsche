@@ -1,12 +1,8 @@
-#ifndef Arduboy_h
-#define Arduboy_h
+#ifndef ArduboyVeritazz_h
+#define ArduboyVeritazz_h
 
-#include "core/core.h"
-#ifndef HOST_TEST
-#include "ab_printer.h"
-#include <Print.h>
+#include "ArduboyCoreVeritazz.h"
 #include <limits.h>
-#endif
 
 // Library version.
 // For a version number in the form of x.y.z the value of the define will be
@@ -22,11 +18,6 @@
 // we reserve the first 16 byte of EEPROM for system use
 #define EEPROM_STORAGE_SPACE_START 16 // and onward
 
-#ifndef HOST_TEST
-// eeprom settings above are neded for audio
-#include "audio/audio.h"
-#endif
-
 #define PIXEL_SAFE_MODE
 
 // pixel colors
@@ -41,26 +32,10 @@
 #define ADC_TEMP (_BV(REFS0) | _BV(REFS1) | _BV(MUX2) | _BV(MUX1) | _BV(MUX0))
 #endif
 
-#ifdef HOST_TEST
-class Arduboy
-#else
-class Arduboy : public ArduboyCore
-#endif
+class ArduboyVeritazz : public ArduboyCoreVeritazz
 {
 public:
-  Arduboy();
-
-  /// Returns true if the button mask passed in is pressed.
-  /**
-   * if (pressed(LEFT_BUTTON + A_BUTTON))
-   */
-  bool pressed(uint8_t buttons);
-
-  /// Returns true if the button mask passed in not pressed.
-  /**
-   * if (notPressed(LEFT_BUTTON))
-   */
-  bool notPressed(uint8_t buttons);
+  ArduboyVeritazz();
 
   /// Initialize hardware, boot logo, boot utilities, etc.
   void begin();
@@ -76,25 +51,18 @@ public:
    *   arduboy.boot()         // raw hardware init
    *   arduboy.audio.begin()  // if you need audio
    */
-  // void boot(); // defined in core.cpp
-
-  void start() __attribute__((deprecated, warning("use begin() instead")));
-
-  /// Scrolls in the Arduboy logo
-  void bootLogo();
 
   /// Flashlight mode
   /**
    * Hold up key when booting to enable, press down key to exit
-   * or simply turn off your Arduboy.  Your sketches can also
+   * or simply turn off your ArduboyVeritazz.  Your sketches can also
    * call this at any time.  It goes into a tight loop until the
    * down buttn is pressed.
    */
-  void flashlight();
+  void doNothing();
 
   /// Clears display.
   void clear();
-  void clearDisplay() __attribute__((deprecated, warning("use clear() instead")));
 
   /// Copies the contents of the screen buffer to the screen.
   /**
@@ -170,9 +138,6 @@ public:
    */
   void drawSlowXYBitmap(int16_t x, int16_t y, const uint8_t *bitmap, uint8_t w, uint8_t h, uint8_t color);
 
-  /// Draws an ASCII character at a point.
-  void drawChar(int16_t x, int16_t y, unsigned char c, uint8_t color, uint8_t bg, uint8_t size);
-
   unsigned char* getBuffer();
 
 
@@ -186,10 +151,6 @@ public:
 
   /// Swap the references of two pointers.
   void swap(int16_t& a, int16_t& b);
-
-#ifndef HOST_TEST
-  ArduboyAudio audio;
-#endif
 
   void setFrameRate(uint8_t rate);
   bool nextFrame();
@@ -213,6 +174,34 @@ public:
 
   /// useful for getting raw approximate voltage values
   uint16_t rawADC(uint8_t adc_bits);
+
+	/* simple buttons */
+	void poll();
+	boolean pressed(uint8_t buttons);
+	boolean notPressed(uint8_t buttons);
+	boolean justReleased(uint8_t button);
+	boolean justPressed(uint8_t button);
+
+	// returns true if button is current depressed
+	boolean up();
+	boolean down();
+	boolean right();
+	boolean left();
+	boolean a();
+	boolean b();
+
+	// returns true if button is was just pressed (previously unpressed)
+	boolean pressedUp();
+	boolean pressedDown();
+	boolean pressedRight();
+	boolean pressedLeft();
+	boolean pressedA();
+	boolean pressedB();
+
+
+private:
+	uint8_t currentButtonState = 0;
+	uint8_t previousButtonState = 0;
 
 protected:
   unsigned char sBuffer[(HEIGHT*WIDTH)/8];

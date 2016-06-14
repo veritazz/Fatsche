@@ -153,8 +153,8 @@ public:
   void swap(int16_t& a, int16_t& b);
 
   void setFrameRate(uint8_t rate);
-  bool nextFrame();
-  bool everyXFrames(uint8_t frames);
+  uint8_t nextFrame();
+  uint8_t everyXFrames(uint8_t frames);
 
   /// Returns the load on the CPU as a percentage.
   /**
@@ -169,7 +169,7 @@ public:
   uint8_t eachFrameMillis;
   long lastFrameStart;
   long nextFrameStart;
-  bool post_render;
+  uint8_t post_render;
   uint8_t lastFrameDurationMs;
 
   /// useful for getting raw approximate voltage values
@@ -177,26 +177,26 @@ public:
 
 	/* simple buttons */
 	void poll();
-	boolean pressed(uint8_t buttons);
-	boolean notPressed(uint8_t buttons);
-	boolean justReleased(uint8_t button);
-	boolean justPressed(uint8_t button);
+	uint8_t pressed(uint8_t buttons);
+	uint8_t notPressed(uint8_t buttons);
+	uint8_t justReleased(uint8_t button);
+	uint8_t justPressed(uint8_t button);
 
 	// returns true if button is current depressed
-	boolean up();
-	boolean down();
-	boolean right();
-	boolean left();
-	boolean a();
-	boolean b();
+	uint8_t up();
+	uint8_t down();
+	uint8_t right();
+	uint8_t left();
+	uint8_t a();
+	uint8_t b();
 
 	// returns true if button is was just pressed (previously unpressed)
-	boolean pressedUp();
-	boolean pressedDown();
-	boolean pressedRight();
-	boolean pressedLeft();
-	boolean pressedA();
-	boolean pressedB();
+	uint8_t pressedUp();
+	uint8_t pressedDown();
+	uint8_t pressedRight();
+	uint8_t pressedLeft();
+	uint8_t pressedA();
+	uint8_t pressedB();
 
 
 private:
@@ -211,7 +211,7 @@ protected:
   int16_t cursor_x;
   int16_t cursor_y;
   uint8_t textsize;
-  bool wrap; // If set, 'wrap' text at right edge of display
+  uint8_t wrap; // If set, 'wrap' text at right edge of display
 };
 
 #endif

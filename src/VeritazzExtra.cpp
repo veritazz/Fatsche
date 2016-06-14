@@ -10,7 +10,7 @@ void VeritazzExtra::begin()
 {
 	boot();
 
-	if (pressed(UP_BUTTON))
+	if (buttonsState() & UP_BUTTON)
 		doNothing();
 
 	bootLogo();

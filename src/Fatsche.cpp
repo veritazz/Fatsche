@@ -1016,7 +1016,7 @@ static const uint8_t bullet_damage_table[NR_WEAPONS] = {
 	24};
 
 /* nr of frames weapon is effective on ground */
-static const uint16_t etime[NR_WEAPONS] = {
+static const uint16_t etime[NR_WEAPONS] PROGMEM = {
 	MS_TO_FRAMES(500), /* water */
 	MS_TO_FRAMES(500), /* poo */
 	FPS * 10, /* oil */
@@ -1032,7 +1032,7 @@ static const uint8_t max_ammo[NR_WEAPONS] PROGMEM = {
 };
 
 /* maximum number of ammo per weapon */
-static const uint16_t weapon_cool_down[NR_WEAPONS] = {
+static const uint16_t weapon_cool_down[NR_WEAPONS] PROGMEM = {
 	WEAPON1_COOLDOWN,
 	WEAPON2_COOLDOWN,
 	WEAPON3_COOLDOWN,
@@ -1059,7 +1059,7 @@ static uint8_t do_damage_from_explosion(struct bullet *b, struct rect *r)
 	if (b->state != BULLET_EFFECT)
 		return 0;
 
-	if (b->etime != etime[b->weapon])
+	if (b->etime != pgm_read_word(&etime[b->weapon]))
 		return 0;
 
 	if (b->weapon == WEAPON_OIL)
@@ -1109,7 +1109,7 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 	if (gd.ws.cool_down[weapon])
 		return 0;
 
-	gd.ws.cool_down[weapon] = weapon_cool_down[weapon];
+	gd.ws.cool_down[weapon] = pgm_read_word(&weapon_cool_down[weapon]);
 
 	if (p->state != PLAYER_RESTS)
 		b = p->state;
@@ -1134,7 +1134,7 @@ static uint8_t new_bullet(uint8_t lane, uint8_t weapon)
 		bs->ys = 5;
 		bs->lane = lane;
 		bs->atime = BULLET_FRAME_TIME;
-		bs->etime = etime[weapon];
+		bs->etime = pgm_read_word(&etime[weapon]);
 		bs->frame = 0;
 		gd.ws.ammo[weapon]--;
 		break;

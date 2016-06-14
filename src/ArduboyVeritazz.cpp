@@ -21,7 +21,7 @@ void ArduboyVeritazz::begin()
   boot(); // raw hardware
 
   // utils
-  if(pressed(UP_BUTTON)) {
+  if(buttonsState() & UP_BUTTON) {
     doNothing();
   }
 }
@@ -29,7 +29,7 @@ void ArduboyVeritazz::begin()
 void ArduboyVeritazz::doNothing()
 {
   blank();
-  while(!pressed(DOWN_BUTTON)) {
+  while(!(buttonsState() & DOWN_BUTTON)) {
     idle();
   }
 }
@@ -42,12 +42,12 @@ void ArduboyVeritazz::setFrameRate(uint8_t rate)
   eachFrameMillis = 1000/rate;
 }
 
-bool ArduboyVeritazz::everyXFrames(uint8_t frames)
+uint8_t ArduboyVeritazz::everyXFrames(uint8_t frames)
 {
   return frameCount % frames == 0;
 }
 
-bool ArduboyVeritazz::nextFrame()
+uint8_t ArduboyVeritazz::nextFrame()
 {
   long now = millis();
   uint8_t remaining;
@@ -292,7 +292,7 @@ void ArduboyVeritazz::drawLine
 (int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color)
 {
   // bresenham's algorithm - thx wikpedia
-  bool steep = abs(y1 - y0) > abs(x1 - x0);
+  uint8_t steep = abs(y1 - y0) > abs(x1 - x0);
   if (steep) {
     swap(x0, y0);
     swap(x1, y1);
@@ -695,7 +695,7 @@ void ArduboyVeritazz::poll()
 // returns true if the button mask passed in is pressed
 //
 //   if (pressed(LEFT_BUTTON + A_BUTTON))
-boolean ArduboyVeritazz::pressed(uint8_t buttons)
+uint8_t ArduboyVeritazz::pressed(uint8_t buttons)
 {
  return (currentButtonState & buttons) == buttons;
 }
@@ -709,7 +709,7 @@ boolean ArduboyVeritazz::pressed(uint8_t buttons)
 // an action AFTER the user finishes the pressing rather than immediately
 // when the button goes down.  Not that there is any good way for someone
 // to change their mind, but the experience can feel very different.
-boolean ArduboyVeritazz::justReleased(uint8_t button)
+uint8_t ArduboyVeritazz::justReleased(uint8_t button)
 {
  return ((previousButtonState & button) && !(currentButtonState & button));
 }
@@ -717,7 +717,7 @@ boolean ArduboyVeritazz::justReleased(uint8_t button)
 // returns true if a button has just been pressed
 // if the button has been held down for multiple frames this will return
 // false.  You should only use this to poll a single button.
-boolean ArduboyVeritazz::justPressed(uint8_t button)
+uint8_t ArduboyVeritazz::justPressed(uint8_t button)
 {
  return (!(previousButtonState & button) && (currentButtonState & button));
 }
@@ -725,57 +725,57 @@ boolean ArduboyVeritazz::justPressed(uint8_t button)
 // returns true if the button mask passed in not pressed
 //
 //   if (not_pressed(LEFT_BUTTON))
-boolean ArduboyVeritazz::notPressed(uint8_t buttons)
+uint8_t ArduboyVeritazz::notPressed(uint8_t buttons)
 {
   return (currentButtonState & buttons) == 0;
 }
 
-boolean ArduboyVeritazz::up() {
+uint8_t ArduboyVeritazz::up() {
   return pressed(UP_BUTTON);
 }
 
-boolean ArduboyVeritazz::down() {
+uint8_t ArduboyVeritazz::down() {
   return pressed(DOWN_BUTTON);
 }
 
-boolean ArduboyVeritazz::right() {
+uint8_t ArduboyVeritazz::right() {
   return pressed(RIGHT_BUTTON);
 }
 
-boolean ArduboyVeritazz::left() {
+uint8_t ArduboyVeritazz::left() {
   return pressed(LEFT_BUTTON);
 }
 
-boolean ArduboyVeritazz::a() {
+uint8_t ArduboyVeritazz::a() {
   return pressed(A_BUTTON);
 }
 
-boolean ArduboyVeritazz::b() {
+uint8_t ArduboyVeritazz::b() {
   return pressed(B_BUTTON);
 }
 
 
 
-boolean ArduboyVeritazz::pressedUp() {
+uint8_t ArduboyVeritazz::pressedUp() {
   return justPressed(UP_BUTTON);
 }
 
-boolean ArduboyVeritazz::pressedDown() {
+uint8_t ArduboyVeritazz::pressedDown() {
   return justPressed(DOWN_BUTTON);
 }
 
-boolean ArduboyVeritazz::pressedRight() {
+uint8_t ArduboyVeritazz::pressedRight() {
   return justPressed(RIGHT_BUTTON);
 }
 
-boolean ArduboyVeritazz::pressedLeft() {
+uint8_t ArduboyVeritazz::pressedLeft() {
   return justPressed(LEFT_BUTTON);
 }
 
-boolean ArduboyVeritazz::pressedA() {
+uint8_t ArduboyVeritazz::pressedA() {
   return justPressed(A_BUTTON);
 }
 
-boolean ArduboyVeritazz::pressedB() {
+uint8_t ArduboyVeritazz::pressedB() {
   return justPressed(B_BUTTON);
 }

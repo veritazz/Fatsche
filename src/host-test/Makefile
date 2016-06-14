@@ -1,4 +1,4 @@
-CFLAGS  = -std=c99 -DHOST_TEST
+CFLAGS  = -std=c++11 -DHOST_TEST
 CFLAGS += -I../
 CFLAGS += -I$(HOME)/sketchbook/libraries/Arduboy/src/
 
@@ -9,7 +9,8 @@ objs = \
 	../images.o \
 	../Fatsche.o \
 	../VeritazzExtra.o \
-	$(HOME)/sketchbook/libraries/Arduboy/src/Arduboy.o
+	../ArduboyVeritazz.o \
+	../ArduboyCoreVeritazz.o \
 
 all: $(target) Makefile
 

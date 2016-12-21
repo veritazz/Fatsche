@@ -34,3 +34,5 @@
 # misc
 *.hex
 *.eep
+.pioenvs
+.piolibdeps

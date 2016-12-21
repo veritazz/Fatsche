@@ -2475,5 +2475,4 @@ loop(void)
 	main_state = main_state_fn[main_state]();
 
 	finish_frame();
-	arduboy.idle();
 }
